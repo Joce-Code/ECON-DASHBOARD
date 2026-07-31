@@ -8,6 +8,19 @@ export default function KpiSection({ kpis }: { kpis: any }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // 1. Carga ultra-rápida via LocalStorage
+    try {
+      const local = localStorage.getItem('focus_portfolio')
+      if (local) {
+        const parsed = JSON.parse(local)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setActiveKpis(parsed)
+          setLoading(false)
+        }
+      }
+    } catch {}
+
+    // 2. Sincronização em segundo plano via Supabase
     async function loadPortfolio() {
       try {
         const supabase = createClient()
@@ -22,6 +35,9 @@ export default function KpiSection({ kpis }: { kpis: any }) {
 
           if (data?.indicators && Array.isArray(data.indicators)) {
             setActiveKpis(data.indicators)
+            try {
+              localStorage.setItem('focus_portfolio', JSON.stringify(data.indicators))
+            } catch {}
           }
         }
       } catch (e) {

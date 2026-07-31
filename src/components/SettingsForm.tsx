@@ -15,7 +15,21 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
   const router = useRouter()
   const [portfolio, setPortfolio] = useState<string[]>(initialPortfolio)
   const [isPending, startTransition] = useTransition()
+  const [savingPortfolio, setSavingPortfolio] = useState(false)
+  const [savedOk, setSavedOk] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      const local = localStorage.getItem('focus_portfolio')
+      if (local) {
+        const parsed = JSON.parse(local)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setPortfolio(parsed)
+        }
+      }
+    } catch {}
+  }, [])
 
   const toggleKpi = async (id: string) => {
     const newPortfolio = portfolio.includes(id) 
@@ -23,6 +37,10 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
       : [...portfolio, id]
     
     setPortfolio(newPortfolio)
+    try {
+      localStorage.setItem('focus_portfolio', JSON.stringify(newPortfolio))
+    } catch {}
+
     setSavingPortfolio(true)
     setSavedOk(false)
     setErrorMessage(null)
@@ -42,6 +60,10 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
   }
 
   const savePortfolio = async () => {
+    try {
+      localStorage.setItem('focus_portfolio', JSON.stringify(portfolio))
+    } catch {}
+
     setSavingPortfolio(true)
     setSavedOk(false)
     setErrorMessage(null)
