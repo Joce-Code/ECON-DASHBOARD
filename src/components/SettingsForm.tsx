@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { updatePortfolio, createAlertRule, deleteAlertRule } from '@/app/settings/actions'
+import { useTransition } from 'react'
+import { createAlertRule, deleteAlertRule } from '@/app/settings/actions'
 
 const AVAILABLE_KPIS = [
   { id: 'IPCA', label: 'IPCA Acumulado 12m' },
@@ -11,112 +10,12 @@ const AVAILABLE_KPIS = [
   { id: 'CDI', label: 'Taxa CDI (Acumulada)' },
 ]
 
-export default function SettingsForm({ initialPortfolio, initialAlertRules }: { initialPortfolio: string[], initialAlertRules: any[] }) {
-  const router = useRouter()
-  const [portfolio, setPortfolio] = useState<string[]>(initialPortfolio)
+export default function SettingsForm({ initialAlertRules }: { initialPortfolio?: string[], initialAlertRules: any[] }) {
   const [isPending, startTransition] = useTransition()
-  const [savingPortfolio, setSavingPortfolio] = useState(false)
-  const [savedOk, setSavedOk] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    try {
-      const local = localStorage.getItem('focus_portfolio')
-      if (local) {
-        const parsed = JSON.parse(local)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setPortfolio(parsed)
-        }
-      }
-    } catch {}
-  }, [])
-
-  const toggleKpi = async (id: string) => {
-    const newPortfolio = portfolio.includes(id) 
-      ? portfolio.filter(p => p !== id)
-      : [...portfolio, id]
-    
-    setPortfolio(newPortfolio)
-    try {
-      localStorage.setItem('focus_portfolio', JSON.stringify(newPortfolio))
-    } catch {}
-
-    setSavingPortfolio(true)
-    setSavedOk(false)
-    setErrorMessage(null)
-    try {
-      const res = await updatePortfolio(newPortfolio)
-      if (res?.success) {
-        setSavedOk(true)
-        router.refresh()
-      } else if (res?.error) {
-        setErrorMessage(res.error)
-      }
-    } catch (e: any) {
-      setErrorMessage(e.message || "Erro ao salvar")
-    } finally {
-      setSavingPortfolio(false)
-    }
-  }
-
-  const savePortfolio = async () => {
-    try {
-      localStorage.setItem('focus_portfolio', JSON.stringify(portfolio))
-    } catch {}
-
-    setSavingPortfolio(true)
-    setSavedOk(false)
-    setErrorMessage(null)
-    try {
-      const res = await updatePortfolio(portfolio)
-      if (res?.success) {
-        setSavedOk(true)
-        router.refresh()
-      } else if (res?.error) {
-        setErrorMessage(res.error)
-      }
-    } catch (e: any) {
-      setErrorMessage(e.message || "Erro ao salvar")
-    } finally {
-      setSavingPortfolio(false)
-    }
-  }
 
   return (
     <div className="space-y-8">
-      {/* Portfolio Config */}
-      <section className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl">
-        <h3 className="text-lg font-medium text-white mb-4">Seu Portfólio</h3>
-        <p className="text-sm text-slate-400 mb-4">Selecione os indicadores que deseja acompanhar na página principal.</p>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          {AVAILABLE_KPIS.map(kpi => (
-            <label key={kpi.id} className="flex items-center space-x-3 cursor-pointer group">
-              <input 
-                type="checkbox"
-                checked={portfolio.includes(kpi.id)}
-                onChange={() => toggleKpi(kpi.id)}
-                className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
-              />
-              <span className="text-slate-300 group-hover:text-white transition-colors">{kpi.label}</span>
-            </label>
-          ))}
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <button 
-            onClick={savePortfolio}
-            disabled={savingPortfolio}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {savingPortfolio ? 'Salvando...' : 'Salvar Portfólio'}
-          </button>
-          {savedOk && <span className="text-emerald-400 text-sm font-medium">Salvo com sucesso!</span>}
-          {errorMessage && <span className="text-rose-400 text-sm font-medium">Erro: {errorMessage}</span>}
-        </div>
-      </section>
-
-      {/* Alert Rules Config */}
+      {/* Motor de Alertas Config */}
       <section className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl">
         <h3 className="text-lg font-medium text-white mb-4">Motor de Alertas</h3>
         <p className="text-sm text-slate-400 mb-6">Configure gatilhos para ser notificado por e-mail automaticamente.</p>
