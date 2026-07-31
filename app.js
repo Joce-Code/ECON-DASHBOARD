@@ -1062,15 +1062,15 @@ async function loadNewsGrid() {
   } catch {
     // Fallback news cards
     const fallbacks = [
-      { tag: 'Política Monetária', title: 'Ata do Copom detalha balanço de riscos para inflação e trajetória da Selic', date: 'Hoje' },
-      { tag: 'Inflação & Meta', title: 'Expectativas para o IPCA permanecem ancoradas na meta oficial do Banco Central', date: 'Ontem' },
-      { tag: 'Câmbio', title: 'Banco Central divulga relatório mensal de fluxo cambial e intervenções no mercado', date: 'Esta semana' },
-      { tag: 'Mercado Financeiro', title: 'Boletim Focus consolida previsões dos principais economistas e instituições', date: 'Esta semana' },
-      { tag: 'PIB & Atividade', title: 'Índice de Atividade Econômica do Banco Central (IBC-Br) indica ritmo do PIB', date: 'Esta semana' },
-      { tag: 'Notas Técnicas', title: 'Relatório Trimestral de Inflação apresenta cenários alternativos para a economia', date: 'Esta semana' },
+      { tag: 'Política Monetária', title: 'Ata do Copom detalha balanço de riscos para inflação e trajetória da Selic', date: 'Oficial', url: 'https://www.bcb.gov.br/publicacoes/atascopom' },
+      { tag: 'Inflação & Meta', title: 'Expectativas para o IPCA permanecem ancoradas na meta oficial do Banco Central', date: 'Oficial', url: 'https://www.bcb.gov.br/publicacoes/ri' },
+      { tag: 'Mercado Financeiro', title: 'Boletim Focus consolida previsões dos principais economistas e instituições', date: 'Semanal', url: 'https://www.bcb.gov.br/controleinflacao/boletimfocus' },
+      { tag: 'Copom & Juros', title: 'Calendário de Reuniões e Decisões da Taxa Selic pelo Banco Central', date: 'Oficial', url: 'https://www.bcb.gov.br/politicamonetaria/copom' },
+      { tag: 'Câmbio & Reservas', title: 'Banco Central divulga estatísticas de setor externo e fluxo cambial', date: 'Mensal', url: 'https://www.bcb.gov.br/noticias' },
+      { tag: 'Notas Técnicas', title: 'Relatório Trimestral de Inflação apresenta cenários alternativos para a economia', date: 'Trimestral', url: 'https://www.bcb.gov.br/publicacoes/ri' },
     ];
     grid.innerHTML = fallbacks.map(item => `
-      <a href="https://www.bcb.gov.br" target="_blank" rel="noopener noreferrer" class="news-card">
+      <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="news-card">
         <div>
           <span class="news-card-tag">${item.tag}</span>
           <h3 class="news-card-title">${item.title}</h3>
@@ -1125,9 +1125,10 @@ const SEARCH_DATABASE = [
   { zone: 'indicators', type: 'indicator', title: '📊 Série 433 — IPCA Variação Mensal', sub: 'SGS Banco Central · Índice Nacional de Preços ao Consumidor Amplo', action: () => selectChartIndicator('ipca') },
   { zone: 'indicators', type: 'indicator', title: '📊 Série 432 — Selic Anualizada % a.a.', sub: 'SGS Banco Central · Meta da taxa básica fixada pelo Copom', action: () => selectChartIndicator('selic') },
   { zone: 'indicators', type: 'indicator', title: '📊 Série 1 — Câmbio Dólar Comercial (PTAX)', sub: 'SGS Banco Central · Cotação de venda do Dólar americano', action: () => selectChartIndicator('cambio') },
-  { zone: 'news', type: 'news', title: '📰 Ata da 260ª Reunião do Copom', sub: 'Análise detalhada da diretoria do Banco Central sobre a economia global e nacional', url: 'https://www.bcb.gov.br' },
-  { zone: 'news', type: 'news', title: '📰 Relatório Trimestral de Inflação (RTI)', sub: 'Projeções e cenários alternativos para a trajetória dos preços', url: 'https://www.bcb.gov.br' },
-  { zone: 'news', type: 'news', title: '📰 Pesquisa Focus — Expectativas de Mercado', sub: 'Relatório semanal com a mediana de +140 instituições financeiras', url: 'https://www.bcb.gov.br' },
+  { zone: 'news', type: 'news', title: '📰 Atas das Reuniões do Copom', sub: 'Análise detalhada da diretoria do Banco Central sobre a economia e decisão da Selic', url: 'https://www.bcb.gov.br/publicacoes/atascopom' },
+  { zone: 'news', type: 'news', title: '📰 Relatório Trimestral de Inflação (RTI)', sub: 'Projeções e cenários alternativos para a trajetória dos preços', url: 'https://www.bcb.gov.br/publicacoes/ri' },
+  { zone: 'news', type: 'news', title: '📰 Pesquisa Focus — Relatório de Mercado', sub: 'Relatório semanal oficial com a mediana de +140 instituições financeiras', url: 'https://www.bcb.gov.br/controleinflacao/boletimfocus' },
+  { zone: 'news', type: 'news', title: '📰 Calendário Copom & Decisões de Juros', sub: 'Datas das reuniões ordinárias e comunicados da Taxa Selic', url: 'https://www.bcb.gov.br/politicamonetaria/copom' },
 ];
 
 function selectChartIndicator(ind) {
