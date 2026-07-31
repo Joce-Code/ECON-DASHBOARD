@@ -330,7 +330,7 @@ async function loadKPISection() {
   const y = today.getFullYear();
   const m = String(today.getMonth() + 1).padStart(2, '0');
   const yPrev = today.getMonth() < 6 ? y - 1 : y;
-  const dataIni = `01/01/${yPrev - 1}`;
+  const dataIni = `01/01/${y - 6}`;
   const dataFim = `${String(today.getDate()).padStart(2,'0')}/${m}/${y}`;
 
   try {
@@ -675,6 +675,16 @@ async function loadTable() {
         });
       });
     }
+
+    // Sort rows: completed years (with realized values) first (descending), then future years (ascending)
+    rows.sort((a, b) => {
+      const aDone = a.realized != null;
+      const bDone = b.realized != null;
+      if (aDone && !bDone) return -1;
+      if (!aDone && bDone) return 1;
+      if (aDone && bDone) return b.year - a.year || a.indicator.localeCompare(b.indicator);
+      return a.year - b.year || a.indicator.localeCompare(b.indicator);
+    });
 
     State.tableData = rows;
     State.tableFiltered = [...rows];
