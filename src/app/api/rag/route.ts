@@ -34,8 +34,16 @@ export async function POST(req: Request) {
     Regra 1: Não alucine informações de fora da base.
     Regra 2: Responda de forma direta e profissional, com foco em impactos (juros, câmbio, custos institucionais).`;
 
+    // Tratar saudações simples sem consumir cota de IA
+    const cleanQuery = query.trim().toLowerCase();
+    if (['oi', 'olá', 'ola', 'hey', 'bom dia', 'boa tarde', 'boa noite', 'ajuda'].includes(cleanQuery)) {
+      return NextResponse.json({ 
+        answer: "Olá! Sou o Agente de Inteligência Institucional do Focus Tracker.\n\nComo posso ajudar você hoje? Você pode me perguntar sobre os impactos da Selic, projeções do IPCA, leitura das Atas do Copom ou estratégias de hedge para tesouraria corporativa." 
+      });
+    }
+
     let text = "";
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+    const modelsToTry = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-2.5-flash'];
     
     let lastError: any = null;
     for (const model of modelsToTry) {
