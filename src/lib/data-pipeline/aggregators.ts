@@ -6,17 +6,28 @@ import { FocusResponseSchema, SGSResponseSchema } from "./observability";
 export async function getGoldFocusMensal() {
   try {
     const raw = await fetchBronzeFocusMensal();
-    // Silver: Validação estrita
     const parsed = FocusResponseSchema.parse(raw);
     
-    // Gold: Agrupar por indicador e pegar os mais recentes
-    const ipca = parsed.value.filter(v => v.Indicador === 'IPCA').slice(0, 5);
-    const cambio = parsed.value.filter(v => v.Indicador === 'Câmbio').slice(0, 5);
+    // Obter apenas a data de publicação mais recente no batch
+    const latestDate = parsed.value.length > 0 ? parsed.value[0].Data : '';
     
-    return { ipca, cambio };
+    // Filtrar IPCA, apenas baseCalculo = 0, da última publicação
+    let ipca = parsed.value.filter(v => v.Indicador === 'IPCA' && v.baseCalculo === 0 && v.Data === latestDate);
+    
+    // Ordenar DataReferencia cronologicamente (MM/YYYY)
+    ipca.sort((a, b) => {
+      const [mA, yA] = (a.DataReferencia || '').split('/');
+      const [mB, yB] = (b.DataReferencia || '').split('/');
+      return Number(yA) * 12 + Number(mA) - (Number(yB) * 12 + Number(mB));
+    });
+    
+    // Pegar as próximas 4 previsões
+    ipca = ipca.slice(0, 4);
+    
+    return { ipca };
   } catch (e) {
     console.error("Data Observability Error [Focus Mensal]:", e);
-    return { ipca: [], cambio: [], error: true };
+    return { ipca: [], error: true };
   }
 }
 
@@ -25,8 +36,20 @@ export async function getGoldFocusCopom() {
     const raw = await fetchBronzeFocusCopom();
     const parsed = FocusResponseSchema.parse(raw);
     
-    // Pegar apenas as próximas 5 reuniões
-    const reunions = parsed.value.filter(v => v.Reuniao && v.Reuniao.startsWith('R')).slice(0, 5);
+    const latestDate = parsed.value.length > 0 ? parsed.value[0].Data : '';
+    
+    // Filtrar Selic, apenas baseCalculo = 0, da última publicação
+    let reunions = parsed.value.filter(v => v.Reuniao && v.Reuniao.startsWith('R') && v.baseCalculo === 0 && v.Data === latestDate);
+    
+    // Ordenar Reuniao cronologicamente (R1/YYYY)
+    reunions.sort((a, b) => {
+      const matchA = a.Reuniao?.match(/R(\d+)\/(\d+)/);
+      const matchB = b.Reuniao?.match(/R(\d+)\/(\d+)/);
+      if (!matchA || !matchB) return 0;
+      return Number(matchA[2]) * 10 + Number(matchA[1]) - (Number(matchB[2]) * 10 + Number(matchB[1]));
+    });
+    
+    reunions = reunions.slice(0, 4);
     
     return { reuniões: reunions };
   } catch (e) {
