@@ -81,6 +81,21 @@ export async function POST(req: Request) {
 function generateLocalContextualAnswer(query: string): string {
   const q = query.toLowerCase();
 
+  if (q.includes('petroleo') || q.includes('petr4') || q.includes('dolar') || q.includes('cambio') || q.includes('commodity')) {
+    return `**Análise de Impacto de Commodities & Câmbio**
+
+Com base na Ata do Copom e Relatórios Institucionais:
+
+**1. Transmissão para a Inflação (IPCA):**
+• A alta nas commodities energéticas (petróleo) e a depreciação do Câmbio (PTAX) aumentam custos de insumos industriais e fretes, pressionando a inflação de combustíveis e alimentos.
+
+**2. Resposta da Política Monetária:**
+• O Banco Central reage a choques de câmbio/commodities estendendo o período de Selic contracionista para evitar contaminação das expectativas de inflação de longo prazo.
+
+**3. Estratégia de Tesouraria & Hedge:**
+• Empresas expostas a passivos em moeda estrangeira ou custos indexados ao dólar devem reforçar travas de câmbio (swaps/opções) para os próximos trimestres.`;
+  }
+
   if (q.includes('cmig') || q.includes('cmig4') || q.includes('elet') || q.includes('elet3') || q.includes('energia') || q.includes('elétrico') || q.includes('eletrico')) {
     return `**Análise de Impacto do Copom: Setor Elétrico & CMIG4 (Cemig)**
 
@@ -99,6 +114,21 @@ Com base na Ata do Copom e Estrutura Financeira de Utilities:
 • Manutenção de posições defensivas no setor elétrico com foco em geração de caixa e fluxo de dividendos.`;
   }
 
+  if (q.includes('inflacao') || q.includes('ipca') || q.includes('meta')) {
+    return `**Análise de Inflação & Meta CMN**
+
+Com base nos dados oficiais do IBGE e Banco Central:
+
+**1. Cenário Atual:**
+• O IPCA acumulado em 12m encontra-se sob monitoramento estrito em relação à Meta de Inflação fixada pelo CMN (3,00% a.a. com intervalo de 1,50% a 4,50%).
+
+**2. Fatores de Pressão:**
+• Incertezas no cenário fiscal e resiliência no mercado de trabalho/serviços desaceleram o processo de desinflação.
+
+**3. Recomendação Estratégica:**
+• Proteção de poder de compra via alocação em papéis indexados ao IPCA (NTN-B / Debêntures Incentivadas).`;
+  }
+
   if (q.includes('copom') || q.includes('investimento') || q.includes('investimentos') || q.includes('selic') || q.includes('juros') || q.includes('agosto')) {
     return `**Análise Institucional de Inteligência (Ata do Copom & Alocação)**
 
@@ -115,36 +145,6 @@ Com base na Ata do Copom e nas curvas de juros futuras:
 
 **4. Diretriz Estratégica:**
 • Manutenção de liquidez em CDI e proteção inflacionária via IPCA+ de prazo intermediário.`;
-  }
-
-  if (q.includes('petroleo') || q.includes('petr4') || q.includes('dolar') || q.includes('cambio') || q.includes('commodity')) {
-    return `**Análise de Impacto de Commodities & Câmbio**
-
-Com base na Ata do Copom e Relatórios Institucionais:
-
-**1. Transmissão para a Inflação (IPCA):**
-• A alta nas commodities energéticas (petróleo) e a depreciação do Câmbio (PTAX) aumentam custos de insumos industriais e fretes, pressionando a inflação de combustíveis e alimentos.
-
-**2. Resposta da Política Monetária:**
-• O Banco Central reage a choques de câmbio/commodities estendendo o período de Selic contracionista para evitar contaminação das expectativas de inflação de longo prazo.
-
-**3. Estratégia de Tesouraria & Hedge:**
-• Empresas expostas a passivos em moeda estrangeira ou custos indexados ao dólar devem reforçar travas de câmbio (swaps/opções) para os próximos trimestres.`;
-  }
-
-  if (q.includes('inflacao') || q.includes('ipca') || q.includes('meta')) {
-    return `**Análise de Inflação & Meta CMN**
-
-Com base nos dados oficiais do IBGE e Banco Central:
-
-**1. Cenário Atual:**
-• O IPCA acumulado em 12m encontra-se sob monitoramento estrito em relação à Meta de Inflação fixada pelo CMN (3,00% a.a. com intervalo de 1,50% a 4,50%).
-
-**2. Fatores de Pressão:**
-• Incertezas no cenário fiscal e resiliência no mercado de trabalho/serviços desaceleram o processo de desinflação.
-
-**3. Recomendação Estratégica:**
-• Proteção de poder de compra via alocação em papéis indexados ao IPCA (NTN-B / Debêntures Incentivadas).`;
   }
 
   return `**Análise Estratégica Institucional (Focus Tracker)**
