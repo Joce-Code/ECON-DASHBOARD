@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic'; // O painel agora é dinâmico por usuá
 
 export default async function Page() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
 
   // Buscar configurações de portfólio do usuário
   let activeKpis = ['IPCA', 'Selic', 'Dólar']; // Default

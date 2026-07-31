@@ -18,13 +18,23 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
   const [savingPortfolio, setSavingPortfolio] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
 
-  const toggleKpi = (id: string) => {
+  const toggleKpi = async (id: string) => {
     const newPortfolio = portfolio.includes(id) 
       ? portfolio.filter(p => p !== id)
       : [...portfolio, id]
     
     setPortfolio(newPortfolio)
+    setSavingPortfolio(true)
     setSavedOk(false)
+    try {
+      await updatePortfolio(newPortfolio)
+      setSavedOk(true)
+      router.refresh()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSavingPortfolio(false)
+    }
   }
 
   const savePortfolio = async () => {
