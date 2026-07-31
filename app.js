@@ -156,6 +156,7 @@ async function fetchFocusLatest(indicator, year) {
 ───────────────────────────────────────────── */
 (function initParticles() {
   const canvas = document.getElementById('bg-canvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   let W, H, particles = [];
 
