@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focus Tracker — Expectativas & Realizações | BCB Dashboard</title>
+  <meta name="description" content="Painel interativo consolidando as expectativas do Boletim Focus e dados realizados do Banco Central do Brasil. Acompanhe IPCA, Selic, PIB e Câmbio em tempo real." />
+  <meta property="og:title" content="Focus Tracker — Expectativas & Realizações" />
+  <meta property="og:description" content="Dashboard de indicadores econômicos do Banco Central do Brasil." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Chart.js Date Adapter -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Background canvas for particle effect -->
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+  <div class="app-shell">
+
+    <!-- ── HEADER ── -->
+    <header class="site-header" role="banner">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true">◈</span>
+          <div class="brand-text">
+            <span class="brand-name">Focus Tracker</span>
+            <span class="brand-sub">Banco Central do Brasil · SGS & OData</span>
+          </div>
+        </div>
+        <div class="header-controls">
+          <div class="last-update" id="last-update-display">
+            <span class="dot pulsing" aria-hidden="true"></span>
+            <span id="last-update-text">Carregando dados…</span>
+          </div>
+          <button class="btn-refresh" id="btn-refresh" title="Atualizar dados" aria-label="Atualizar dados">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Atualizar
+          </button>
+        </div>
+      </div>
+      <!-- News ticker -->
+      <div class="news-ticker-wrapper" id="ticker-wrapper" aria-label="Feed de notícias BCB">
+        <span class="ticker-label">BCB</span>
+        <div class="ticker-track-container">
+          <div class="ticker-track" id="ticker-track">
+            <span class="ticker-item">Carregando feed de notícias do Banco Central…</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content" role="main">
+
+      <!-- ── SECTION: KPI CARDS ── -->
+      <section class="section" aria-labelledby="kpi-heading">
+        <div class="section-header">
+          <h1 id="kpi-heading" class="section-title">Indicadores em Destaque</h1>
+          <span class="section-badge">Expectativa Median · Boletim Focus</span>
+        </div>
+        <div class="kpi-grid" id="kpi-grid" role="list">
+          <!-- Cards injetados via JS -->
+          <div class="kpi-card skeleton" role="listitem" aria-busy="true"></div>
+          <div class="kpi-card skeleton" role="listitem" aria-busy="true"></div>
+          <div class="kpi-card skeleton" role="listitem" aria-busy="true"></div>
+          <div class="kpi-card skeleton" role="listitem" aria-busy="true"></div>
+        </div>
+      </section>
+
+      <!-- ── SECTION: CHARTS ── -->
+      <section class="section" aria-labelledby="charts-heading">
+        <div class="section-header">
+          <h2 id="charts-heading" class="section-title">Expectativa vs. Realizado</h2>
+          <span class="section-badge">SGS · Série histórica</span>
+        </div>
+
+        <!-- Chart tab controls -->
+        <div class="chart-tabs" role="tablist" aria-label="Selecione o indicador">
+          <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="chart-ipca" id="tab-ipca" data-indicator="ipca">IPCA</button>
+          <button class="tab-btn" role="tab" aria-selected="false" aria-controls="chart-selic" id="tab-selic" data-indicator="selic">Selic</button>
+          <button class="tab-btn" role="tab" aria-selected="false" aria-controls="chart-cambio" id="tab-cambio" data-indicator="cambio">Câmbio</button>
+          <button class="tab-btn" role="tab" aria-selected="false" aria-controls="chart-pib" id="tab-pib" data-indicator="pib">PIB</button>
+        </div>
+
+        <div class="chart-container" id="chart-panel" role="tabpanel">
+          <div class="chart-loading" id="chart-loading" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <span>Buscando dados do BCB…</span>
+          </div>
+          <canvas id="main-chart" aria-label="Gráfico de expectativa versus realizado"></canvas>
+          <div class="chart-legend" id="chart-legend" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <!-- ── SECTION: COMPARISON TABLE ── -->
+      <section class="section" aria-labelledby="table-heading">
+        <div class="section-header">
+          <h2 id="table-heading" class="section-title">Tabela Comparativa</h2>
+          <span class="section-badge">Expectativa × Realizado × Desvio</span>
+        </div>
+
+        <!-- Table filter -->
+        <div class="table-controls">
+          <div class="filter-group">
+            <label for="filter-indicator" class="filter-label">Indicador</label>
+            <select id="filter-indicator" class="filter-select">
+              <option value="all">Todos</option>
+              <option value="IPCA">IPCA</option>
+              <option value="Selic">Selic</option>
+              <option value="Câmbio">Câmbio</option>
+              <option value="PIB">PIB</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-year" class="filter-label">Ano</label>
+            <select id="filter-year" class="filter-select">
+              <option value="all">Todos</option>
+            </select>
+          </div>
+          <button class="btn-export" id="btn-export" aria-label="Exportar tabela como CSV">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar CSV
+          </button>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-label="Tabela de dados históricos">
+          <table class="data-table" id="data-table" aria-live="polite">
+            <thead>
+              <tr>
+                <th scope="col" class="sortable" data-col="indicator" aria-sort="none">Indicador <span class="sort-icon" aria-hidden="true">↕</span></th>
+                <th scope="col" class="sortable" data-col="date" aria-sort="none">Data Ref. <span class="sort-icon" aria-hidden="true">↕</span></th>
+                <th scope="col" class="sortable" data-col="expected" aria-sort="none">Expectativa <span class="sort-icon" aria-hidden="true">↕</span></th>
+                <th scope="col" class="sortable" data-col="realized" aria-sort="none">Realizado <span class="sort-icon" aria-hidden="true">↕</span></th>
+                <th scope="col" class="sortable" data-col="deviation" aria-sort="none">Desvio <span class="sort-icon" aria-hidden="true">↕</span></th>
+                <th scope="col">Precisão</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <!-- Skeleton rows -->
+              <tr class="skeleton-row"><td colspan="6"><div class="skeleton" style="height:18px"></div></td></tr>
+              <tr class="skeleton-row"><td colspan="6"><div class="skeleton" style="height:18px"></div></td></tr>
+              <tr class="skeleton-row"><td colspan="6"><div class="skeleton" style="height:18px"></div></td></tr>
+              <tr class="skeleton-row"><td colspan="6"><div class="skeleton" style="height:18px"></div></td></tr>
+              <tr class="skeleton-row"><td colspan="6"><div class="skeleton" style="height:18px"></div></td></tr>
+            </tbody>
+          </table>
+          <div class="table-pagination" id="table-pagination" aria-label="Paginação da tabela"></div>
+        </div>
+      </section>
+
+      <!-- ── SECTION: FOCUS EXPECTATIONS DETAIL ── -->
+      <section class="section" aria-labelledby="focus-heading">
+        <div class="section-header">
+          <h2 id="focus-heading" class="section-title">Boletim Focus — Detalhamento</h2>
+          <span class="section-badge">Top 5 Mediana · Ano Corrente e Próximo</span>
+        </div>
+        <div class="focus-grid" id="focus-grid">
+          <!-- Injected via JS -->
+          <div class="focus-card skeleton" style="height:180px"></div>
+          <div class="focus-card skeleton" style="height:180px"></div>
+          <div class="focus-card skeleton" style="height:180px"></div>
+          <div class="focus-card skeleton" style="height:180px"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <p>Dados públicos consumidos diretamente das APIs do <a href="https://www.bcb.gov.br" target="_blank" rel="noopener noreferrer">Banco Central do Brasil</a> · SGS e OData Expectativas · Atualização automática a cada 15 min.</p>
+      <p class="footer-small">Proibida interpretação como aconselhamento financeiro. Uso exclusivo para fins educacionais e de análise.</p>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
