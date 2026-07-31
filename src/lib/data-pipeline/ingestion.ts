@@ -18,8 +18,8 @@ export async function fetchBronzeFocusCopom() {
 }
 
 export async function fetchBronzeSGS(code: number) {
-  // Para SGS, pegamos os últimos 24 registros
-  const url = `${BASE_SGS}.${code}/dados/ultimos/24?formato=json`;
+  // Para SGS, o BCB impõe um limite máximo de 20 registros nesse endpoint
+  const url = `${BASE_SGS}.${code}/dados/ultimos/20?formato=json`;
   const res = await fetch(url, { next: { revalidate: 3600 } });
   if (!res.ok) throw new Error(`Falha na ingestão Bronze: SGS ${code}`);
   return res.json();
