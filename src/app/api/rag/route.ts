@@ -43,7 +43,9 @@ export async function POST(req: Request) {
     }
 
     let text = "";
-    const modelsToTry = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-2.5-flash'];
+    // Usando modelos 1.5 garantidos no Free Tier (limite de 15 RPM real)
+    // Modelos 2.0+ frequentemente possuem limit: 0 em contas sem cartão de crédito
+    const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-flash-lite'];
     
     let lastError: any = null;
     for (const model of modelsToTry) {
