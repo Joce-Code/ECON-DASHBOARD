@@ -631,50 +631,55 @@ async function loadTable() {
       { key: 'PIB Total', label: 'PIB',     cls: 'pib',    unit: '%',     sgsId: null },
     ];
 
+    // Build target years list (e.g. 5 years back to 2 years ahead)
+    const targetYears = [];
+    for (let yr = y - 5; yr <= y + 2; yr++) targetYears.push(yr);
+
+    const fetchPromises = [];
+    indicators.forEach(ind => {
+      targetYears.forEach(yr => {
+        fetchPromises.push(
+          fetchFocusLatest(ind.key, yr).then(focusRow => ({
+            ind,
+            yr,
+            expected: focusRow?.Mediana ?? null,
+          }))
+        );
+      });
+    });
+
+    const results = await Promise.all(fetchPromises);
     const rows = [];
 
-    for (const ind of indicators) {
-      const focusAnnual = await fetchFocusAnnual(ind.key, 500);
-      // Keep only baseCalculo=0 rows, then latest survey per reference year
-      const byYear = {};
-      focusAnnual.filter(r => r.baseCalculo === 0).forEach(row => {
-        if (!byYear[row.DataReferencia] || row.Data > byYear[row.DataReferencia].Data) {
-          byYear[row.DataReferencia] = row;
-        }
-      });
+    results.forEach(({ ind, yr, expected }) => {
+      if (expected == null) return;
 
-      Object.entries(byYear).forEach(([yr, row]) => {
-        const intYr = parseInt(yr);
-        if (intYr < y - 5) return; // cap at 5 years back
-
-        // Estimate realized (we'll use SGS data stored in State or a heuristic)
-        let realized = null;
-        if (intYr < y && ind.sgsId && State.sgsData[ind.cls]) {
-          const sgs = State.sgsData[ind.cls];
-          const yearData = sgs.filter(d => {
-            const dateObj = parseIsoDate(d.date);
-            return dateObj && dateObj.getFullYear() === intYr;
-          });
-          if (yearData.length) {
-            if (ind.cls === 'ipca') {
-              realized = yearData.reduce((acc, d) => (1 + acc) * (1 + d.value / 100) - 1, 0) * 100;
-            } else {
-              realized = yearData[yearData.length - 1].value;
-            }
+      let realized = null;
+      if (yr < y && ind.sgsId && State.sgsData[ind.cls]) {
+        const sgs = State.sgsData[ind.cls];
+        const yearData = sgs.filter(d => {
+          const dateObj = parseIsoDate(d.date);
+          return dateObj && dateObj.getFullYear() === yr;
+        });
+        if (yearData.length) {
+          if (ind.cls === 'ipca') {
+            realized = yearData.reduce((acc, d) => (1 + acc) * (1 + d.value / 100) - 1, 0) * 100;
+          } else {
+            realized = yearData[yearData.length - 1].value;
           }
         }
+      }
 
-        rows.push({
-          indicator: ind.label,
-          indicatorCls: ind.cls,
-          year: intYr,
-          date: `${yr}`,
-          expected: row.Mediana,
-          realized: realized,
-          unit: ind.unit,
-        });
+      rows.push({
+        indicator: ind.label,
+        indicatorCls: ind.cls,
+        year: yr,
+        date: `${yr}`,
+        expected: expected,
+        realized: realized,
+        unit: ind.unit,
       });
-    }
+    });
 
     // Sort rows: completed years (with realized values) first (descending), then future years (ascending)
     rows.sort((a, b) => {
