@@ -17,9 +17,12 @@ export async function POST(req: Request) {
   try {
     const { query } = await req.json();
     
-    if (!process.env.GEMINI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
       return NextResponse.json({ answer: "⚠ Erro de Sistema: Variável GEMINI_API_KEY não configurada no ambiente." }, { status: 500 });
     }
+
+    const ai = new GoogleGenAI({ apiKey });
 
     const prompt = `Você é o Agente de Inteligência Institucional do Focus Tracker. Seu público é focado em Tesouraria Corporativa e Estratégia.
     Responda à pergunta do usuário baseando-se estritamente na base de conhecimento oficial (Ata do Copom) fornecida.
@@ -31,14 +34,25 @@ export async function POST(req: Request) {
     Regra 1: Não alucine informações de fora da base.
     Regra 2: Responda de forma direta e profissional, com foco em impactos (juros, câmbio, custos institucionais).`;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+    let text = "";
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
         contents: prompt,
-    });
+      });
+      text = response.text || "";
+    } catch (modelErr) {
+      // Fallback para gemini-2.0-flash caso o modelo 2.5 não esteja liberado na chave
+      const fallbackResponse = await ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: prompt,
+      });
+      text = fallbackResponse.text || "";
+    }
 
-    return NextResponse.json({ answer: response.text });
+    return NextResponse.json({ answer: text });
   } catch (error: any) {
     console.error("RAG Error:", error);
-    return NextResponse.json({ answer: "Falha na comunicação com o provedor LLM. Verifique os logs." }, { status: 500 });
+    return NextResponse.json({ answer: `Falha na comunicação com o provedor LLM: ${error?.message || 'Erro desconhecido'}` }, { status: 500 });
   }
 }
