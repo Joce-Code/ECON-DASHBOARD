@@ -276,23 +276,27 @@ function renderSparkline(container, values, color) {
 const CARD_DEFS = [
   {
     id: 'ipca', label: 'IPCA', icon: '📈', unit: '%',
-    cls: 'ipca', color: 'hsl(210, 100%, 65%)',
-    desc: 'Inflação acumulada 12 meses', dataKey: 'ipca',
+    cls: 'ipca', color: 'hsl(187, 100%, 50%)',
+    desc: 'Inflação acumulada 12m', dataKey: 'ipca',
+    tooltip: 'Índice de Preços ao Consumidor Amplo. Inflação oficial do IBGE acumulada nos últimos 12 meses.',
   },
   {
     id: 'selic', label: 'Selic', icon: '🏦', unit: '% a.a.',
-    cls: 'selic', color: 'hsl(152, 69%, 52%)',
+    cls: 'selic', color: 'hsl(147, 100%, 45%)',
     desc: 'Taxa básica de juros', dataKey: 'selic',
+    tooltip: 'Taxa básica de juros definida pelo Copom/BCB que baliza o mercado financeiro nacional.',
   },
   {
     id: 'cambio', label: 'USD/BRL', icon: '💱', unit: 'R$',
-    cls: 'cambio', color: 'hsl(38, 100%, 62%)',
+    cls: 'cambio', color: 'hsl(42, 100%, 50%)',
     desc: 'Câmbio comercial', dataKey: 'cambio',
+    tooltip: 'Cotação do Dólar comercial americano em relação ao Real brasileiro.',
   },
   {
     id: 'pib', label: 'PIB', icon: '📊', unit: '% a.a.',
-    cls: 'pib', color: 'hsl(260, 80%, 65%)',
+    cls: 'pib', color: 'hsl(265, 90%, 68%)',
     desc: 'Crescimento esperado', dataKey: 'pib',
+    tooltip: 'Produto Interno Bruto. Soma de todos os bens e serviços finais produzidos no país.',
   },
 ];
 
@@ -306,17 +310,20 @@ function buildKPICard(def, value, prevValue, focusExp) {
   return `
   <div class="kpi-card ${def.cls}" role="listitem" aria-label="${def.label}: ${displayVal}${def.unit}">
     <div class="card-header">
-      <span class="card-label">${def.label}</span>
+      <div class="card-label-group">
+        <span class="card-label">${def.label}</span>
+        <span class="scope-note-trigger" tabindex="0" aria-label="Explicação sobre ${def.label}" data-tooltip="${def.tooltip}">ⓘ</span>
+      </div>
       <span class="card-icon" aria-hidden="true">${def.icon}</span>
     </div>
     <div class="card-value">
-      ${def.id === 'cambio' ? '' : ''}${displayVal}<span class="card-unit"> ${def.unit}</span>
+      ${displayVal}<span class="card-unit"> ${def.unit}</span>
     </div>
     <div class="card-meta">
       <span class="card-sub">${def.desc}</span>
       <span class="card-sub">Focus: <strong style="color:var(--clr-text-primary)">${focusVal}${def.unit !== 'R$' ? def.unit : ''}</strong></span>
       ${delta != null
-        ? `<span class="card-delta ${deltaDir}">${deltaSign} ${Math.abs(delta).toFixed(2)}${def.unit === 'R$' ? '' : ' p.p.'} vs mês anterior</span>`
+        ? `<span class="card-delta ${deltaDir}">${deltaSign} ${Math.abs(delta).toFixed(2)}${def.unit === 'R$' ? '' : ' p.p.'} vs anterior</span>`
         : ''
       }
     </div>
