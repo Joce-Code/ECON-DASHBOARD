@@ -20,10 +20,8 @@ export async function POST(req: Request) {
     // Prioriza a chave do cliente (BYOK), se não houver, cai pra chave do servidor Vercel
     const apiKey = clientApiKey?.trim() || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ answer: "⚠ Erro de Sistema: Nenhuma chave API configurada. Clique na ⚙️ API Key e insira sua chave gratuita do Google AI Studio." }, { status: 500 });
+      return NextResponse.json({ answer: "⚠ Erro: Nenhuma chave API configurada no ambiente." }, { status: 500 });
     }
-
-    const ai = new GoogleGenAI({ apiKey });
 
     const prompt = `Você é o Agente de Inteligência Institucional do Focus Tracker. Seu público é focado em Tesouraria Corporativa e Estratégia.
     Responda à pergunta do usuário baseando-se estritamente na base de conhecimento oficial (Ata do Copom) fornecida.
@@ -43,36 +41,37 @@ export async function POST(req: Request) {
       });
     }
 
-    let text = "";
-    // Usando modelos 1.5 garantidos no Free Tier (limite de 15 RPM real)
-    // Modelos 2.0+ frequentemente possuem limit: 0 em contas sem cartão de crédito
-    const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-flash-lite'];
-    
-    let lastError: any = null;
-    for (const model of modelsToTry) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-        });
-        if (response.text) {
-          text = response.text;
-          break;
-        }
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`Erro no modelo ${model}:`, err?.message || err);
-      }
+    // Direct fetch to Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Gemini API Error:", data);
+      const errorMessage = data?.error?.message || JSON.stringify(data);
+      // Retorna o erro EXATO da API do Google para a interface para depuração
+      return NextResponse.json({ 
+        answer: `⚠ Falha na comunicação com o provedor LLM: ${errorMessage}\n\n[Fallback Local Ativado]\n\n${generateLocalContextualAnswer(query)}` 
+      });
     }
 
-    // Se conseguiu resposta do LLM via API
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
     if (text) {
       return NextResponse.json({ answer: text });
     }
 
-    // Se a cota da API Gemini estiver esgotada, ativa o Motor de Inteligência Contextual Local
-    const contextualAnswer = generateLocalContextualAnswer(query);
-    return NextResponse.json({ answer: contextualAnswer });
+    return NextResponse.json({ answer: generateLocalContextualAnswer(query) });
   } catch (error: any) {
     console.error("RAG Fatal Error:", error);
     return NextResponse.json({ 
