@@ -8,18 +8,18 @@ import { revalidatePath } from 'next/cache'
 export async function getPortfolio() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { indicators: [] }
+  if (!user) return { indicators: ['IPCA', 'Selic', 'Dólar'] }
 
   const { data, error } = await supabase
     .from('portfolios')
     .select('indicators')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (error || !data) {
-    // If not found, create default for this user
     const defaultIndicators = ['IPCA', 'Selic', 'Dólar']
-    await supabase.from('portfolios').insert({ id: user.id, indicators: defaultIndicators })
+    // Tentar criar se não existir
+    await supabase.from('portfolios').upsert({ id: user.id, indicators: defaultIndicators })
     return { indicators: defaultIndicators }
   }
 
@@ -29,7 +29,7 @@ export async function getPortfolio() {
 export async function updatePortfolio(indicators: string[]) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
+  if (!user) return { success: false, error: "Usuário não autenticado." }
 
   const { error } = await supabase
     .from('portfolios')
@@ -37,11 +37,12 @@ export async function updatePortfolio(indicators: string[]) {
 
   if (error) {
     console.error("Erro ao salvar portfolio:", error)
-    throw new Error(error.message)
+    return { success: false, error: error.message }
   }
 
   revalidatePath('/')
   revalidatePath('/settings')
+  return { success: true }
 }
 
 // --- Alert Rules ---

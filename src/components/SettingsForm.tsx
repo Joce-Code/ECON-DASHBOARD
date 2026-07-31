@@ -15,8 +15,7 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
   const router = useRouter()
   const [portfolio, setPortfolio] = useState<string[]>(initialPortfolio)
   const [isPending, startTransition] = useTransition()
-  const [savingPortfolio, setSavingPortfolio] = useState(false)
-  const [savedOk, setSavedOk] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const toggleKpi = async (id: string) => {
     const newPortfolio = portfolio.includes(id) 
@@ -26,12 +25,17 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
     setPortfolio(newPortfolio)
     setSavingPortfolio(true)
     setSavedOk(false)
+    setErrorMessage(null)
     try {
-      await updatePortfolio(newPortfolio)
-      setSavedOk(true)
-      router.refresh()
-    } catch (e) {
-      console.error(e)
+      const res = await updatePortfolio(newPortfolio)
+      if (res?.success) {
+        setSavedOk(true)
+        router.refresh()
+      } else if (res?.error) {
+        setErrorMessage(res.error)
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || "Erro ao salvar")
     } finally {
       setSavingPortfolio(false)
     }
@@ -39,10 +43,18 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
 
   const savePortfolio = async () => {
     setSavingPortfolio(true)
+    setSavedOk(false)
+    setErrorMessage(null)
     try {
-      await updatePortfolio(portfolio)
-      setSavedOk(true)
-      router.refresh()
+      const res = await updatePortfolio(portfolio)
+      if (res?.success) {
+        setSavedOk(true)
+        router.refresh()
+      } else if (res?.error) {
+        setErrorMessage(res.error)
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || "Erro ao salvar")
     } finally {
       setSavingPortfolio(false)
     }
@@ -78,6 +90,7 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
             {savingPortfolio ? 'Salvando...' : 'Salvar Portfólio'}
           </button>
           {savedOk && <span className="text-emerald-400 text-sm font-medium">Salvo com sucesso!</span>}
+          {errorMessage && <span className="text-rose-400 text-sm font-medium">Erro: {errorMessage}</span>}
         </div>
       </section>
 
