@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { updatePortfolio, createAlertRule, deleteAlertRule } from '@/app/settings/actions'
 
