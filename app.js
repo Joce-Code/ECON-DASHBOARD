@@ -473,6 +473,18 @@ async function loadChart(indicator) {
   const loading = document.getElementById('chart-loading');
   loading.classList.remove('hidden');
 
+  // Update Sketchbook annotation badge
+  const sketchbookBadge = document.getElementById('chart-sketchbook-badge');
+  if (sketchbookBadge) {
+    const annotations = {
+      ipca: '✏️ Meta Inflação: 3,00% (Intervalo 1,50% a 4,50%)',
+      selic: '✏️ Decisão Copom: Manutenção de juros & Trajetória',
+      cambio: '✏️ PTAX Banco Central: Cotação comercial de fechamento',
+      pib: '✏️ Expectativa Focus: Produto Interno Bruto nacional',
+    };
+    sketchbookBadge.innerHTML = `<span>${annotations[indicator] || '✏️ Anotação Técnica BCB'}</span>`;
+  }
+
   try {
     const today = new Date();
     const y = today.getFullYear();
@@ -1047,6 +1059,147 @@ async function loadAll() {
 }
 
 /* ─────────────────────────────────────────────
+   ENTERPRISE SEARCH MODAL (Ctrl+K) & SEARCH ZONES
+───────────────────────────────────────────── */
+const SEARCH_DATABASE = [
+  { zone: 'bestbets', type: 'bestbet', title: '🎯 Meta de Inflação IPCA 2026', sub: 'Meta oficial estipulada pelo CMN: 3,00% com intervalo de tolerância de 1,50% a 4,50%', action: () => selectChartIndicator('ipca') },
+  { zone: 'bestbets', type: 'bestbet', title: '🎯 Taxa Selic & Reuniões do Copom', sub: 'Acompanhe a trajetória da taxa básica de juros e o calendário oficial', action: () => selectChartIndicator('selic') },
+  { zone: 'bestbets', type: 'bestbet', title: '🎯 Projeção do Dólar (USD/BRL)', sub: 'Expectativas de mercado para o câmbio comercial de fechamento', action: () => selectChartIndicator('cambio') },
+  { zone: 'indicators', type: 'indicator', title: '📊 Série 433 — IPCA Variação Mensal', sub: 'SGS Banco Central · Índice Nacional de Preços ao Consumidor Amplo', action: () => selectChartIndicator('ipca') },
+  { zone: 'indicators', type: 'indicator', title: '📊 Série 432 — Selic Anualizada % a.a.', sub: 'SGS Banco Central · Meta da taxa básica fixada pelo Copom', action: () => selectChartIndicator('selic') },
+  { zone: 'indicators', type: 'indicator', title: '📊 Série 1 — Câmbio Dólar Comercial (PTAX)', sub: 'SGS Banco Central · Cotação de venda do Dólar americano', action: () => selectChartIndicator('cambio') },
+  { zone: 'news', type: 'news', title: '📰 Ata da 260ª Reunião do Copom', sub: 'Análise detalhada da diretoria do Banco Central sobre a economia global e nacional', url: 'https://www.bcb.gov.br' },
+  { zone: 'news', type: 'news', title: '📰 Relatório Trimestral de Inflação (RTI)', sub: 'Projeções e cenários alternativos para a trajetória dos preços', url: 'https://www.bcb.gov.br' },
+  { zone: 'news', type: 'news', title: '📰 Pesquisa Focus — Expectativas de Mercado', sub: 'Relatório semanal com a mediana de +140 instituições financeiras', url: 'https://www.bcb.gov.br' },
+];
+
+function selectChartIndicator(ind) {
+  const tab = document.getElementById(`tab-${ind}`);
+  if (tab) tab.click();
+  if (window.closeSearchModal) window.closeSearchModal();
+}
+
+function initEnterpriseSearch() {
+  const modal = document.getElementById('search-modal');
+  const triggerBtn = document.getElementById('btn-search-trigger');
+  const closeBtn = document.getElementById('btn-close-search');
+  const input = document.getElementById('search-input');
+  const resultsContainer = document.getElementById('search-results-list');
+  const zoneTabs = document.querySelectorAll('.zone-tab');
+
+  if (!modal || !input) return;
+
+  let activeZone = 'all';
+
+  function openModal() {
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    input.focus();
+    renderResults();
+  }
+
+  function closeModal() {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    input.value = '';
+  }
+
+  window.closeSearchModal = closeModal;
+
+  triggerBtn?.addEventListener('click', openModal);
+  closeBtn?.addEventListener('click', closeModal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  // Hotkey Ctrl+K / Cmd+K / Esc
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openModal();
+    } else if (e.key === 'Escape' && modal.classList.contains('open')) {
+      closeModal();
+    }
+  });
+
+  // Zone Tabs
+  zoneTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      zoneTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeZone = tab.dataset.zone;
+      renderResults();
+    });
+  });
+
+  // Input listener
+  input.addEventListener('input', renderResults);
+
+  function renderResults() {
+    const q = input.value.toLowerCase().trim();
+    let filtered = SEARCH_DATABASE.filter(item => {
+      const matchZone = activeZone === 'all' || item.zone === activeZone;
+      const matchQuery = !q || item.title.toLowerCase().includes(q) || item.sub.toLowerCase().includes(q);
+      return matchZone && matchQuery;
+    });
+
+    if (!filtered.length) {
+      resultsContainer.innerHTML = `<div style="padding:1.5rem;text-align:center;color:var(--clr-text-muted);font-size:0.85rem">Nenhum resultado encontrado para "${q}".</div>`;
+      return;
+    }
+
+    resultsContainer.innerHTML = filtered.map(item => `
+      <div class="search-result-item" tabindex="0" data-type="${item.type}">
+        <div>
+          <div class="result-item-title">${item.title}</div>
+          <div style="font-size:0.72rem;color:var(--clr-text-muted);margin-top:2px">${item.sub}</div>
+        </div>
+        <span class="result-item-badge ${item.type}">${item.type === 'bestbet' ? 'BEST BET' : item.type.toUpperCase()}</span>
+      </div>
+    `).join('');
+
+    // Click handlers
+    resultsContainer.querySelectorAll('.search-result-item').forEach((el, i) => {
+      el.addEventListener('click', () => {
+        const item = filtered[i];
+        if (item.action) item.action();
+        else if (item.url) window.open(item.url, '_blank');
+        closeModal();
+      });
+    });
+  }
+}
+
+function initFacetedNavigation() {
+  // Facet chips for topic filtering
+  const chips = document.querySelectorAll('.facet-chip');
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const topic = chip.dataset.facetTopic;
+
+      if (topic === 'all') {
+        document.querySelectorAll('.kpi-card').forEach(c => c.style.display = 'flex');
+      } else {
+        document.querySelectorAll('.kpi-card').forEach(c => {
+          c.style.display = c.classList.contains(topic) ? 'flex' : 'none';
+        });
+        const tab = document.getElementById(`tab-${topic}`);
+        if (tab) tab.click();
+      }
+    });
+  });
+
+  // Algorethics algorithm selector
+  const algoSelect = document.getElementById('select-algo');
+  algoSelect?.addEventListener('change', () => {
+    loadNewsGrid();
+  });
+}
+
+/* ─────────────────────────────────────────────
    EVENT LISTENERS
 ───────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1067,6 +1220,10 @@ document.addEventListener('DOMContentLoaded', () => {
       loadChart(State.activeChart);
     });
   });
+
+  // Init Phase 2 Features
+  initEnterpriseSearch();
+  initFacetedNavigation();
 
   // Auto refresh every 15 min
   setInterval(loadAll, CONFIG.REFRESH_INTERVAL_MS);

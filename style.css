@@ -132,7 +132,7 @@ body {
 }
 
 /* ============================================================
-   HEADER
+   HEADER & SEARCH TRIGGER
    ============================================================ */
 .site-header {
   position: sticky;
@@ -199,6 +199,49 @@ body {
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+/* Enterprise Search Trigger (Ctrl+K) */
+.btn-search-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: 0.45rem 1rem;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--r-md);
+  color: var(--clr-text-muted);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 280px;
+}
+
+.btn-search-trigger:hover, .btn-search-trigger:focus-visible {
+  border-color: var(--clr-border-hov);
+  background: var(--clr-surface-2);
+  color: var(--clr-text-primary);
+  box-shadow: 0 0 20px var(--clr-accent-glow);
+}
+
+.search-placeholder {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-kbd {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: var(--clr-text-secondary);
 }
 
 .header-controls {
@@ -322,6 +365,83 @@ body {
 }
 
 /* ============================================================
+   FACETED NAVIGATION BAR & ALGORITHM CONTROLS
+   ============================================================ */
+.faceted-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-md);
+  flex-wrap: wrap;
+  padding: 0.6rem var(--gap-lg);
+  background: var(--clr-surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-card);
+}
+
+.facet-group {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  flex-wrap: wrap;
+}
+
+.facet-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--clr-text-muted);
+  margin-right: 4px;
+}
+
+.facet-chip {
+  padding: 0.3rem 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--clr-border);
+  border-radius: 999px;
+  color: var(--clr-text-secondary);
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.facet-chip:hover {
+  background: var(--clr-surface-2);
+  color: var(--clr-text-primary);
+  border-color: var(--clr-border-hov);
+}
+
+.facet-chip.active {
+  background: var(--clr-accent-dim);
+  border-color: var(--clr-accent);
+  color: var(--clr-accent);
+  font-weight: 600;
+}
+
+.facet-select {
+  appearance: none;
+  background: var(--clr-surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--r-sm);
+  color: var(--clr-text-primary);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 2rem 0.35rem 0.75rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.facet-select:hover, .facet-select:focus {
+  border-color: var(--clr-accent);
+  outline: none;
+}
+
+/* ============================================================
    MAIN CONTENT & BENTO GRID LAYOUT
    ============================================================ */
 .main-content {
@@ -329,13 +449,12 @@ body {
   max-width: var(--max-w);
   width: 100%;
   margin: 0 auto;
-  padding: var(--gap-xl) var(--gap-xl) var(--gap-xl);
+  padding: var(--gap-lg) var(--gap-xl) var(--gap-xl);
   display: flex;
   flex-direction: column;
   gap: var(--gap-xl);
 }
 
-/* ── Section Header ── */
 .section {
   display: flex;
   flex-direction: column;
@@ -376,6 +495,21 @@ h1.section-title { font-size: 1.3rem; }
   border: 1px solid rgba(0, 229, 255, 0.25);
   border-radius: 999px;
   padding: 0.25rem 0.75rem;
+}
+
+/* ── Sketchbook / Hand-drawn Style Badge ── */
+.sketchbook-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background: rgba(255, 179, 0, 0.12);
+  border: 1px dashed rgba(255, 179, 0, 0.4);
+  border-radius: 6px;
+  color: var(--clr-amber);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
 }
 
 /* ── Scope Notes / Tooltip ── */
@@ -865,6 +999,143 @@ h1.section-title { font-size: 1.3rem; }
 }
 
 /* ============================================================
+   ENTERPRISE SEARCH MODAL (Ctrl+K)
+   ============================================================ */
+.search-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 17, 0.85);
+  backdrop-filter: blur(16px);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.search-modal-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.search-modal-card {
+  width: 90%;
+  max-width: 650px;
+  background: #0d1322;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: var(--r-xl);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 40px var(--clr-accent-glow);
+  overflow: hidden;
+  animation: modal-slide-down 0.25s ease;
+}
+
+@keyframes modal-slide-down {
+  from { transform: translateY(-16px); }
+  to   { transform: translateY(0); }
+}
+
+.search-input-header {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+  padding: var(--gap-md) var(--gap-lg);
+  border-bottom: 1px solid var(--clr-border);
+  color: var(--clr-accent);
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--clr-text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.search-modal-close {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text-muted);
+  cursor: pointer;
+}
+
+.search-zones-tabs {
+  display: flex;
+  gap: var(--gap-xs);
+  padding: var(--gap-xs) var(--gap-lg);
+  background: rgba(0,0,0,0.2);
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.zone-tab {
+  padding: 0.35rem 0.85rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  color: var(--clr-text-secondary);
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.zone-tab.active {
+  background: var(--clr-accent-dim);
+  color: var(--clr-accent);
+  font-weight: 600;
+}
+
+.search-results-list {
+  max-height: 380px;
+  overflow-y: auto;
+  padding: var(--gap-sm) var(--gap-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--gap-sm) var(--gap-md);
+  border-radius: var(--r-md);
+  color: var(--clr-text-primary);
+  text-decoration: none;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.search-result-item:hover, .search-result-item.selected {
+  background: var(--clr-accent-dim);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+}
+
+.result-item-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.result-item-badge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.result-item-badge.bestbet { background: var(--clr-amber-dim); color: var(--clr-amber); }
+.result-item-badge.indicator { background: var(--clr-accent-dim); color: var(--clr-accent); }
+.result-item-badge.news { background: var(--clr-green-dim); color: var(--clr-green); }
+
+/* ============================================================
    FOOTER
    ============================================================ */
 .site-footer {
@@ -897,6 +1168,8 @@ h1.section-title { font-size: 1.3rem; }
 @media (max-width: 1100px) {
   .bento-grid-2col { grid-template-columns: 1fr; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .btn-search-trigger { min-width: auto; }
+  .search-placeholder { display: none; }
 }
 
 @media (max-width: 640px) {

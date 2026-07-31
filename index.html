@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Focus Tracker — Expectativas & Realizações | BCB Dashboard</title>
-  <meta name="description" content="Painel interativo consolidando as expectativas do Boletim Focus e dados realizados do Banco Central do Brasil em layout Bento Grid." />
+  <meta name="description" content="Painel interativo consolidando as expectativas do Boletim Focus, dados do BCB e mercados em layout Bento Grid com Busca Enterprise (Ctrl+K) e Classificação Facetada." />
   <meta property="og:title" content="Focus Tracker — Expectativas & Realizações" />
   <meta property="og:description" content="Dashboard de indicadores econômicos do Banco Central do Brasil." />
 
@@ -40,6 +40,14 @@
             <span class="brand-sub">Banco Central do Brasil · SGS & OData</span>
           </div>
         </div>
+
+        <!-- Search Bar Trigger (Ctrl+K) -->
+        <button class="btn-search-trigger" id="btn-search-trigger" aria-label="Abrir busca rápida">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span class="search-placeholder">Buscar séries, notícias, Copom…</span>
+          <kbd class="search-kbd">Ctrl K</kbd>
+        </button>
+
         <div class="header-controls">
           <div class="last-update" id="last-update-display">
             <span class="dot pulsing" aria-hidden="true"></span>
@@ -51,6 +59,7 @@
           </button>
         </div>
       </div>
+
       <!-- News ticker -->
       <div class="news-ticker-wrapper" id="ticker-wrapper" aria-label="Feed de notícias BCB">
         <span class="ticker-label">BCB</span>
@@ -63,6 +72,27 @@
     </header>
 
     <main class="main-content" role="main">
+
+      <!-- ── FACETED NAVIGATION & ALGORITHMIC CONTROLS BAR ── -->
+      <nav class="faceted-bar" aria-label="Filtros por faceta e algoritmo">
+        <div class="facet-group">
+          <span class="facet-label">Tópico:</span>
+          <button class="facet-chip active" data-facet-topic="all">Todos</button>
+          <button class="facet-chip" data-facet-topic="ipca">Inflação (IPCA)</button>
+          <button class="facet-chip" data-facet-topic="selic">Juros (Selic)</button>
+          <button class="facet-chip" data-facet-topic="cambio">Câmbio</button>
+          <button class="facet-chip" data-facet-topic="pib">PIB</button>
+        </div>
+
+        <div class="facet-group right">
+          <span class="facet-label" title="Autonomia Algorítmica (Algorethics)">Algoritmo:</span>
+          <select id="select-algo" class="facet-select" aria-label="Seleção de algoritmo de recomendação">
+            <option value="chrono">⏱ Cronológico (Mais recente)</option>
+            <option value="diversity">🎲 Serendipidade (Sem bolhas de filtro)</option>
+            <option value="relevance">⭐ Relevância BCB</option>
+          </select>
+        </div>
+      </nav>
 
       <!-- ── BENTO ROW 1: KPI CARDS ── -->
       <section class="section" aria-labelledby="kpi-heading">
@@ -92,7 +122,11 @@
               <h2 id="charts-heading" class="section-title">Expectativa vs. Realizado</h2>
               <span class="scope-note-trigger" tabindex="0" aria-label="Explicação do gráfico" data-tooltip="Compara a trajetória histórica do indicador (linha contínua) com a mediana anual do Focus (linha tracejada).">ⓘ</span>
             </div>
-            <span class="section-badge">SGS · Série Histórica</span>
+
+            <!-- Sketchbook Annotation Badge -->
+            <div class="sketchbook-badge" id="chart-sketchbook-badge">
+              <span>✏️ Meta Inflação: 3,00% (±1,5%)</span>
+            </div>
           </div>
 
           <!-- Chart tab controls -->
@@ -227,6 +261,30 @@
       <p class="footer-small">Proibida interpretação como aconselhamento financeiro. Uso exclusivo para fins educacionais e de análise.</p>
     </footer>
 
+  </div>
+
+  <!-- ── ENTERPRISE SEARCH MODAL (Ctrl+K) ── -->
+  <div class="search-modal-backdrop" id="search-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="search-input">
+    <div class="search-modal-card">
+      <div class="search-input-header">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Digite para buscar séries, Copom, IPCA, Selic…" autocomplete="off" />
+        <button class="search-modal-close" id="btn-close-search" aria-label="Fechar busca">ESC</button>
+      </div>
+
+      <!-- Search Zones Tabs -->
+      <div class="search-zones-tabs" role="tablist">
+        <button class="zone-tab active" data-zone="all">🔍 Todos</button>
+        <button class="zone-tab" data-zone="bestbets">🎯 Best Bets</button>
+        <button class="zone-tab" data-zone="indicators">📊 Séries SGS</button>
+        <button class="zone-tab" data-zone="news">📰 Comunicados BCB</button>
+      </div>
+
+      <!-- Results List -->
+      <div class="search-results-list" id="search-results-list" role="listbox">
+        <!-- Injected via JS -->
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
