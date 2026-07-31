@@ -15,11 +15,12 @@ Aviso Estratégico: Tesourarias e empresas expostas a dívidas atreladas ao CDI 
 
 export async function POST(req: Request) {
   try {
-    const { query } = await req.json();
+    const { query, clientApiKey } = await req.json();
     
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Prioriza a chave do cliente (BYOK), se não houver, cai pra chave do servidor Vercel
+    const apiKey = clientApiKey?.trim() || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ answer: "⚠ Erro de Sistema: Variável GEMINI_API_KEY não configurada no ambiente." }, { status: 500 });
+      return NextResponse.json({ answer: "⚠ Erro de Sistema: Nenhuma chave API configurada. Clique na ⚙️ API Key e insira sua chave gratuita do Google AI Studio." }, { status: 500 });
     }
 
     const ai = new GoogleGenAI({ apiKey });
