@@ -1,31 +1,14 @@
 import { getGoldKPIs, getGoldFocusMensal, getGoldFocusCopom } from "@/lib/data-pipeline/aggregators";
 import { Suspense } from "react";
-import { createClient } from "@/utils/supabase/server";
 
 import TradingViewWidget from "@/components/TradingViewWidget";
 import WhatIfCalculator from "@/components/WhatIfCalculator";
 import RagChat from "@/components/RagChat";
+import KpiSection from "@/components/KpiSection";
 
-export const dynamic = 'force-dynamic'; // O painel agora é dinâmico por usuário
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // Buscar configurações de portfólio do usuário
-  let activeKpis = ['IPCA', 'Selic', 'Dólar']; // Default
-  if (user) {
-    const { data: portfolio, error } = await supabase
-      .from('portfolios')
-      .select('indicators')
-      .eq('id', user.id)
-      .maybeSingle();
-    
-    if (portfolio?.indicators && Array.isArray(portfolio.indicators)) {
-      activeKpis = portfolio.indicators;
-    }
-  }
-
   // SSR Data Fetching (Fronteira Eficiente)
   const [kpis, focusMensal, focusCopom] = await Promise.all([
     getGoldKPIs(),
@@ -35,80 +18,8 @@ export default async function Page() {
 
   return (
     <div className="space-y-8">
-      {/* Dobra Superior: KPIs Customizados + Calendário */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.error ? (
-          <div className="col-span-full p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400">
-            ⚠ Alerta de Contingência: Falha na observabilidade dos dados do BCB. Exibindo último snapshot válido.
-          </div>
-        ) : (
-          <>
-            {activeKpis.includes('IPCA') && (
-              <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
-                <p className="text-sm text-slate-400">IPCA Acumulado 12m</p>
-                <div>
-                  <h2 className="text-3xl font-mono text-white mt-2">{kpis.ipca?.valor}%</h2>
-                  <p className={`text-xs mt-2 font-mono ${Number(kpis.ipca?.delta) < 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {Number(kpis.ipca?.delta) > 0 ? '+' : ''}{kpis.ipca?.delta} vs anterior
-                  </p>
-                </div>
-              </div>
-            )}
-            {activeKpis.includes('Selic') && (
-              <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
-                <p className="text-sm text-slate-400">Taxa Selic Over</p>
-                <div>
-                  <h2 className="text-3xl font-mono text-white mt-2">{kpis.selic?.valor}% a.a.</h2>
-                  <p className="text-xs mt-2 font-mono text-slate-500">
-                    — Estável vs anterior
-                  </p>
-                </div>
-              </div>
-            )}
-            {activeKpis.includes('Dólar') && (
-              <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
-                <p className="text-sm text-slate-400">Dólar Comercial (PTAX)</p>
-                <div>
-                  <h2 className="text-3xl font-mono text-white mt-2">R$ {kpis.dolar?.valor}</h2>
-                  <p className={`text-xs mt-2 font-mono ${Number(kpis.dolar?.delta) < 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {Number(kpis.dolar?.delta) > 0 ? '+' : ''}{kpis.dolar?.delta} vs anterior
-                  </p>
-                </div>
-              </div>
-            )}
-            {activeKpis.includes('CDI') && (
-              <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
-                <p className="text-sm text-slate-400">Taxa CDI (Mês)</p>
-                <div>
-                  <h2 className="text-3xl font-mono text-white mt-2">1.04%</h2>
-                  <p className="text-xs mt-2 font-mono text-emerald-400">
-                    +0.01 vs anterior
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Calendário Econômico - Sempre visível para preencher o buraco */}
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
-              <p className="text-sm text-slate-400 mb-4">Próximas Divulgações</p>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-300">Reunião COPOM</span>
-                  <span className="font-mono text-blue-400">18/Set</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-300">IPCA-15</span>
-                  <span className="font-mono text-emerald-400">27/Ago</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-300">Relatório Focus</span>
-                  <span className="font-mono text-slate-400">Toda Seg.</span>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </section>
+      {/* Dobra Superior: KPIs Customizados + Calendário (Reatividade em tempo real) */}
+      <KpiSection kpis={kpis} />
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
