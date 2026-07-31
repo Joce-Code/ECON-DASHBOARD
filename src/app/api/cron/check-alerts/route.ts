@@ -3,14 +3,16 @@ import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 import { getGoldKPIs } from '@/lib/data-pipeline/aggregators';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-// Instância de Admin do Supabase (ignora RLS para varredura geral em background)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-); 
+export const dynamic = 'force-dynamic'; // Garante que essa rota não seja cacheadada no build
 
 export async function GET(req: Request) {
+  // Instanciando dentro do handler para evitar falha no Build da Vercel
+  const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy');
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy'
+  );
+
   // Segurança básica para evitar acesso indevido à rota de Cron
   if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     // return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
