@@ -940,6 +940,75 @@ async function loadNewsTicker() {
 }
 
 /* ─────────────────────────────────────────────
+   ECONOMIC NEWS PORTAL GRID
+───────────────────────────────────────────── */
+async function loadNewsGrid() {
+  const grid = document.getElementById('news-grid');
+  if (!grid) return;
+
+  const RSS_URL = 'https://www.bcb.gov.br/api/feed/sitebcb/notas-pt-br/rss';
+  const categories = ['Política Monetária', 'Copom', 'Inflação & Meta', 'Mercado Financeiro', 'Câmbio', 'Notas Técnicas'];
+
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(RSS_URL)}`;
+    const json = await fetchJSON(proxyUrl, 8000);
+    if (!json.contents) throw new Error('No contents');
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(json.contents, 'text/xml');
+    const items = [...doc.querySelectorAll('item')].slice(0, 6);
+
+    if (!items.length) throw new Error('No items');
+
+    grid.innerHTML = items.map((item, idx) => {
+      const title = item.querySelector('title')?.textContent?.trim() || 'Nota do Banco Central';
+      const link  = item.querySelector('link')?.textContent?.trim() || 'https://www.bcb.gov.br';
+      const dateStr  = item.querySelector('pubDate')?.textContent?.trim() || '';
+      const d = dateStr ? new Date(dateStr).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' }) : 'Recente';
+      const tag = categories[idx % categories.length];
+
+      return `
+      <a href="${link}" target="_blank" rel="noopener noreferrer" class="news-card" aria-label="${title}">
+        <div>
+          <span class="news-card-tag">${tag}</span>
+          <h3 class="news-card-title">${title}</h3>
+        </div>
+        <div class="news-card-meta">
+          <span class="news-card-date">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${d}
+          </span>
+          <span class="news-card-link-icon">Ler nota ↗</span>
+        </div>
+      </a>`;
+    }).join('');
+
+  } catch {
+    // Fallback news cards
+    const fallbacks = [
+      { tag: 'Política Monetária', title: 'Ata do Copom detalha balanço de riscos para inflação e trajetória da Selic', date: 'Hoje' },
+      { tag: 'Inflação & Meta', title: 'Expectativas para o IPCA permanecem ancoradas na meta oficial do Banco Central', date: 'Ontem' },
+      { tag: 'Câmbio', title: 'Banco Central divulga relatório mensal de fluxo cambial e intervenções no mercado', date: 'Esta semana' },
+      { tag: 'Mercado Financeiro', title: 'Boletim Focus consolida previsões dos principais economistas e instituições', date: 'Esta semana' },
+      { tag: 'PIB & Atividade', title: 'Índice de Atividade Econômica do Banco Central (IBC-Br) indica ritmo do PIB', date: 'Esta semana' },
+      { tag: 'Notas Técnicas', title: 'Relatório Trimestral de Inflação apresenta cenários alternativos para a economia', date: 'Esta semana' },
+    ];
+    grid.innerHTML = fallbacks.map(item => `
+      <a href="https://www.bcb.gov.br" target="_blank" rel="noopener noreferrer" class="news-card">
+        <div>
+          <span class="news-card-tag">${item.tag}</span>
+          <h3 class="news-card-title">${item.title}</h3>
+        </div>
+        <div class="news-card-meta">
+          <span class="news-card-date">${item.date}</span>
+          <span class="news-card-link-icon">Ler nota ↗</span>
+        </div>
+      </a>
+    `).join('');
+  }
+}
+
+/* ─────────────────────────────────────────────
    LAST UPDATE DISPLAY
 ───────────────────────────────────────────── */
 function updateTimestamp() {
@@ -960,7 +1029,7 @@ async function loadAll() {
     await loadKPISection();
     await Promise.all([
       loadChart(State.activeChart),
-      loadTable(),
+      loadNewsGrid(),
       loadFocusDetail(),
       loadNewsTicker(),
     ]);
@@ -991,18 +1060,6 @@ document.addEventListener('DOMContentLoaded', () => {
       loadChart(State.activeChart);
     });
   });
-
-  // Table filters
-  document.getElementById('filter-indicator').addEventListener('change', applyTableFilters);
-  document.getElementById('filter-year').addEventListener('change', applyTableFilters);
-
-  // Table sort headers
-  document.querySelectorAll('.data-table th.sortable').forEach(th => {
-    th.addEventListener('click', () => sortTable(th.dataset.col));
-  });
-
-  // Export CSV
-  document.getElementById('btn-export').addEventListener('click', exportCSV);
 
   // Auto refresh every 15 min
   setInterval(loadAll, CONFIG.REFRESH_INTERVAL_MS);
