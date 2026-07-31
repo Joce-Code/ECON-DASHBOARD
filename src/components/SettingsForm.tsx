@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { updatePortfolio, createAlertRule, deleteAlertRule } from '@/app/settings/actions'
 
 const AVAILABLE_KPIS = [
@@ -11,9 +12,11 @@ const AVAILABLE_KPIS = [
 ]
 
 export default function SettingsForm({ initialPortfolio, initialAlertRules }: { initialPortfolio: string[], initialAlertRules: any[] }) {
+  const router = useRouter()
   const [portfolio, setPortfolio] = useState<string[]>(initialPortfolio)
   const [isPending, startTransition] = useTransition()
   const [savingPortfolio, setSavingPortfolio] = useState(false)
+  const [savedOk, setSavedOk] = useState(false)
 
   const toggleKpi = (id: string) => {
     const newPortfolio = portfolio.includes(id) 
@@ -21,12 +24,15 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
       : [...portfolio, id]
     
     setPortfolio(newPortfolio)
+    setSavedOk(false)
   }
 
   const savePortfolio = async () => {
     setSavingPortfolio(true)
     try {
       await updatePortfolio(portfolio)
+      setSavedOk(true)
+      router.refresh()
     } finally {
       setSavingPortfolio(false)
     }
@@ -53,13 +59,16 @@ export default function SettingsForm({ initialPortfolio, initialAlertRules }: { 
           ))}
         </div>
 
-        <button 
-          onClick={savePortfolio}
-          disabled={savingPortfolio}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          {savingPortfolio ? 'Salvando...' : 'Salvar Portfólio'}
-        </button>
+        <div className="flex items-center space-x-4">
+          <button 
+            onClick={savePortfolio}
+            disabled={savingPortfolio}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {savingPortfolio ? 'Salvando...' : 'Salvar Portfólio'}
+          </button>
+          {savedOk && <span className="text-emerald-400 text-sm font-medium">Salvo com sucesso!</span>}
+        </div>
       </section>
 
       {/* Alert Rules Config */}
