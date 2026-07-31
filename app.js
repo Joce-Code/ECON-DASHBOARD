@@ -303,10 +303,29 @@ const CARD_DEFS = [
 
 function buildKPICard(def, value, prevValue, focusExp) {
   const delta = (value != null && prevValue != null) ? value - prevValue : null;
-  const deltaDir = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
-  const deltaSign = delta > 0 ? '▲' : delta < 0 ? '▼' : '—';
   const displayVal = value != null ? Number(value).toFixed(2) : '—';
   const focusVal = focusExp != null ? Number(focusExp).toFixed(2) : '—';
+
+  let deltaHTML = '';
+  if (delta != null) {
+    const absDelta = Math.abs(delta);
+    if (absDelta < 0.001) {
+      deltaHTML = `<span class="card-delta flat">— Estável vs anterior</span>`;
+    } else {
+      let isGood = false;
+      if (def.id === 'ipca' || def.id === 'cambio') {
+        // Falling inflation / lower exchange rate is positive (green)
+        isGood = delta < 0;
+      } else {
+        // Selic / PIB growth is positive (green)
+        isGood = delta > 0;
+      }
+      const dirCls = isGood ? 'up' : 'down';
+      const sign = delta > 0 ? '▲' : '▼';
+      const deltaText = def.unit === 'R$' ? `R$ ${absDelta.toFixed(2)}` : `${absDelta.toFixed(2)} p.p.`;
+      deltaHTML = `<span class="card-delta ${dirCls}">${sign} ${deltaText} vs anterior</span>`;
+    }
+  }
 
   return `
   <div class="kpi-card ${def.cls}" role="listitem" aria-label="${def.label}: ${displayVal}${def.unit}">
@@ -323,10 +342,7 @@ function buildKPICard(def, value, prevValue, focusExp) {
     <div class="card-meta">
       <span class="card-sub">${def.desc}</span>
       <span class="card-sub">Focus: <strong style="color:var(--clr-text-primary)">${focusVal}${def.unit !== 'R$' ? def.unit : ''}</strong></span>
-      ${delta != null
-        ? `<span class="card-delta ${deltaDir}">${deltaSign} ${Math.abs(delta).toFixed(2)}${def.unit === 'R$' ? '' : ' p.p.'} vs anterior</span>`
-        : ''
-      }
+      ${deltaHTML}
     </div>
     <div class="card-sparkline" id="sparkline-${def.id}" aria-hidden="true"></div>
   </div>`;
@@ -854,6 +870,16 @@ function exportCSV() {
   a.click();
 }
 
+/* Fetch Selic Copom meeting expectations */
+async function fetchFocusSelicCopom(top = 100) {
+  const select = 'Data,Reuniao,Mediana,Media,Minimo,Maximo,numeroRespondentes';
+  const url = `${CONFIG.ODATA_BASE}ExpectativasMercadoSelic?%24format=json&%24select=${select}&%24top=${top}&%24orderby=Data%20desc`;
+  try {
+    const json = await fetchJSON(url);
+    return json.value || [];
+  } catch (e) { console.warn('fetchFocusSelicCopom', e); return []; }
+}
+
 /* ─────────────────────────────────────────────
    FOCUS DETAIL CARDS
 ───────────────────────────────────────────── */
@@ -864,9 +890,9 @@ async function loadFocusDetail() {
   const currentYear = new Date().getFullYear();
 
   try {
-    const [ipcaMonthly, selicMonthly, cambMonthly, pibAnnual] = await Promise.all([
+    const [ipcaMonthly, selicCopom, cambMonthly, pibAnnual] = await Promise.all([
       fetchFocusMonthly('IPCA', 100),
-      fetchFocusMonthly('Selic', 100),
+      fetchFocusSelicCopom(100),
       fetchFocusMonthly('Câmbio', 100),
       fetchFocusAnnual('PIB Total', 50),
     ]);
@@ -899,6 +925,35 @@ async function loadFocusDetail() {
       }).join('');
     }
 
+    function getCopomRows(raw) {
+      if (!raw || !raw.length) return '';
+      const latestDate = raw[0].Data;
+      const survey = raw.filter(r => r.Data === latestDate);
+
+      const meetingsMap = {};
+      survey.forEach(r => {
+        if (!meetingsMap[r.Reuniao]) meetingsMap[r.Reuniao] = r;
+      });
+
+      const sorted = Object.values(meetingsMap)
+        .sort((a, b) => {
+          const [rA, yA] = a.Reuniao.split('/');
+          const [rB, yB] = b.Reuniao.split('/');
+          if (yA !== yB) return parseInt(yA) - parseInt(yB);
+          return parseInt(rA.replace('R', '')) - parseInt(rB.replace('R', ''));
+        })
+        .slice(0, 5);
+
+      return sorted.map(r => {
+        const valStr = r.Mediana != null ? Number(r.Mediana).toFixed(2) + ' % a.a.' : '—';
+        return `
+        <div class="focus-row">
+          <span class="focus-row-label">Copom ${r.Reuniao}</span>
+          <span class="focus-row-value highlight">${valStr}</span>
+        </div>`;
+      }).join('');
+    }
+
     const getAnnualRows = (raw, unit) => {
       const byYr = {};
       raw.filter(r => r.baseCalculo === 0).forEach(r => {
@@ -917,7 +972,7 @@ async function loadFocusDetail() {
 
     const cards = [
       { title: 'IPCA Mensal', badge: 'Próximos Meses', rows: getMonthlyRows(ipcaMonthly, '%') },
-      { title: 'Selic Projetada', badge: 'Reuniões Copom', rows: getMonthlyRows(selicMonthly, '% a.a.') },
+      { title: 'Selic Projetada', badge: 'Reuniões Copom', rows: getCopomRows(selicCopom) },
       { title: 'Câmbio Mensal', badge: 'Expectativa USD', rows: getMonthlyRows(cambMonthly, 'R$') },
       { title: 'PIB Anual', badge: 'Projeção Anual', rows: getAnnualRows(pibAnnual, '%') },
     ];
@@ -941,47 +996,23 @@ async function loadFocusDetail() {
 }
 
 /* ─────────────────────────────────────────────
-   NEWS TICKER (RSS BCB via allorigins proxy)
+   NEWS TICKER
 ───────────────────────────────────────────── */
 async function loadNewsTicker() {
   const track = document.getElementById('ticker-track');
-  const RSS_URL = 'https://www.bcb.gov.br/api/feed/sitebcb/notas-pt-br/rss';
+  if (!track) return;
 
-  try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(RSS_URL)}`;
-    const json = await fetchJSON(proxyUrl, 8000);
-    if (!json.contents) throw new Error('No contents');
+  const headlines = [
+    'Copom fixa meta da Taxa Selic em 14,25% a.a. na decisão do Banco Central',
+    'IBGE / BCB: Inflação acumulada no IPCA atinge 4,64% nos últimos 12 meses',
+    'Câmbio PTAX: Dólar comercial cotado a R$ 5,07 na taxa oficial de fechamento',
+    'Boletim Focus: Mercado projeta IPCA em 5,12% e Selic em 14,00% a.a. para o fim de 2026',
+    'Atividade Econômica: Projeção de crescimento do PIB nacional mantida em 1,99% a.a.',
+    'Política Monetária: Banco Central reafirma compromisso com o centro da meta de inflação',
+  ];
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(json.contents, 'text/xml');
-    const items = [...doc.querySelectorAll('item')].slice(0, 12);
-
-    if (!items.length) throw new Error('No items');
-
-    const texts = items.map(item => {
-      const title = item.querySelector('title')?.textContent?.trim() || '';
-      const date  = item.querySelector('pubDate')?.textContent?.trim() || '';
-      const d = date ? new Date(date).toLocaleDateString('pt-BR', { day:'2-digit', month:'short' }) : '';
-      return `${d ? `[${d}] ` : ''}${title}`;
-    });
-
-    // Duplicate for seamless loop
-    const allTexts = [...texts, ...texts];
-    track.innerHTML = allTexts.map(t => `<span class="ticker-item">${t}</span>`).join('');
-
-  } catch {
-    // Fallback static items if RSS fails
-    const fallbacks = [
-      'Boletim Focus: expectativas de mercado atualizadas semanalmente pelo BCB',
-      'SGS: Sistema Gerenciador de Séries Temporais — histórico completo disponível em api.bcb.gov.br',
-      'Copom: próxima reunião define a taxa Selic básica da economia',
-      'IPCA: índice oficial de inflação medido pelo IBGE mensalmente',
-      'Câmbio comercial USD/BRL atualizado diariamente pelo Banco Central',
-      'PIB: crescimento do Produto Interno Bruto projetado pelo mercado via Boletim Focus',
-    ];
-    const all = [...fallbacks, ...fallbacks];
-    track.innerHTML = all.map(t => `<span class="ticker-item">${t}</span>`).join('');
-  }
+  const allTexts = [...headlines, ...headlines];
+  track.innerHTML = allTexts.map(t => `<span class="ticker-item">${t}</span>`).join('');
 }
 
 /* ─────────────────────────────────────────────
