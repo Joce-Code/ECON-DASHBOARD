@@ -60,29 +60,34 @@ export async function getGoldFocusCopom() {
 
 export async function getGoldKPIs() {
   try {
-    // 433 = IPCA, 432 = Selic, 1 = Dólar
-    const [rawIpca, rawSelic, rawDolar] = await Promise.all([
+    // 433 = IPCA, 432 = Selic Over, 10813 = Dólar PTAX Venda, 4189 = Selic Meta
+    const [rawIpca, rawSelic, rawDolar, rawSelicMeta] = await Promise.all([
       fetchBronzeSGS(433),
       fetchBronzeSGS(432),
-      fetchBronzeSGS(1)
+      fetchBronzeSGS(10813).catch(() => fetchBronzeSGS(1)), // Fallback caso 10813 oscile
+      fetchBronzeSGS(4189).catch(() => [{ data: '', valor: 10.50 }])
     ]);
 
     const ipca = SGSResponseSchema.parse(rawIpca);
     const selic = SGSResponseSchema.parse(rawSelic);
     const dolar = SGSResponseSchema.parse(rawDolar);
+    const selicMeta = SGSResponseSchema.parse(rawSelicMeta);
 
     // Deltas
     const currIpca = ipca[ipca.length - 1];
     const prevIpca = ipca[ipca.length - 2];
     
     const currSelic = selic[selic.length - 1];
+    const currSelicMeta = selicMeta[selicMeta.length - 1];
     
     const currDolar = dolar[dolar.length - 1];
     const prevDolar = dolar[dolar.length - 2];
 
     return {
       ipca: { valor: currIpca.valor, delta: (currIpca.valor - prevIpca.valor).toFixed(2), data: currIpca.data },
+      ipcaMeta: { valor: 3.00, tolMin: 1.50, tolMax: 4.50 },
       selic: { valor: currSelic.valor, data: currSelic.data },
+      selicMeta: { valor: currSelicMeta.valor, data: currSelicMeta.data },
       dolar: { valor: currDolar.valor, delta: (currDolar.valor - prevDolar.valor).toFixed(4), data: currDolar.data }
     };
   } catch (e) {

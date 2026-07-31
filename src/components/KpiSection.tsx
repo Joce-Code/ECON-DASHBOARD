@@ -6,7 +6,9 @@ import { updatePortfolio } from '@/app/settings/actions'
 
 const AVAILABLE_KPIS = [
   { id: 'IPCA', label: 'IPCA Acumulado 12m' },
+  { id: 'IPCA Meta', label: 'Meta de Inflação CMN' },
   { id: 'Selic', label: 'Taxa Selic Over' },
+  { id: 'Selic Meta', label: 'Taxa Selic Meta Copom' },
   { id: 'Dólar', label: 'Dólar Comercial (PTAX)' },
   { id: 'CDI', label: 'Taxa CDI (Acumulada)' },
 ]
@@ -114,6 +116,18 @@ export default function KpiSection({ kpis }: { kpis: any }) {
           </div>
         )}
 
+        {activeKpis.includes('IPCA Meta') && (
+          <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
+            <p className="text-sm text-slate-400">Meta Inflação CMN</p>
+            <div>
+              <h2 className="text-3xl font-mono text-white mt-2">{kpis.ipcaMeta?.valor || 3.00}%</h2>
+              <p className="text-xs mt-2 font-mono text-blue-400">
+                Banda: 1.50% a 4.50%
+              </p>
+            </div>
+          </div>
+        )}
+
         {activeKpis.includes('Selic') && (
           <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
             <p className="text-sm text-slate-400">Taxa Selic Over</p>
@@ -121,6 +135,18 @@ export default function KpiSection({ kpis }: { kpis: any }) {
               <h2 className="text-3xl font-mono text-white mt-2">{kpis.selic?.valor}% a.a.</h2>
               <p className="text-xs mt-2 font-mono text-slate-500">
                 — Estável vs anterior
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activeKpis.includes('Selic Meta') && (
+          <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
+            <p className="text-sm text-slate-400">Taxa Selic Meta (Copom)</p>
+            <div>
+              <h2 className="text-3xl font-mono text-white mt-2">{kpis.selicMeta?.valor}% a.a.</h2>
+              <p className="text-xs mt-2 font-mono text-emerald-400">
+                Meta Oficial BCB
               </p>
             </div>
           </div>
