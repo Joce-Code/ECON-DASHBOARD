@@ -1098,7 +1098,8 @@ function updateTimestamp() {
 ───────────────────────────────────────────── */
 async function loadAll() {
   const btn = document.getElementById('btn-refresh');
-  btn.classList.add('loading');
+  btn?.classList.add('loading');
+  State.sgsData = {}; // Clear cache to force fresh API query
 
   try {
     // Load in order: KPI first (populates sgsData), then others
