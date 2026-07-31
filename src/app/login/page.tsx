@@ -1,14 +1,19 @@
 import { login, signup } from './actions'
 
-export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>
+
+export default async function LoginPage(props: { searchParams: SearchParams }) {
+  const searchParams = await props.searchParams;
+  const error = searchParams?.error as string | undefined;
+
   return (
     <div className="flex h-screen w-full items-center justify-center bg-[#090d16]">
       <form className="w-full max-w-sm flex flex-col gap-4 bg-[#0f172a] border border-slate-800 p-8 rounded-xl shadow-2xl">
         <h1 className="text-2xl font-bold text-white mb-2">Focus Tracker</h1>
         
-        {searchParams.error && (
+        {error && (
           <div className="bg-red-900/50 border border-red-500 text-red-300 text-sm p-3 rounded">
-            {searchParams.error}
+            {error}
           </div>
         )}
 
