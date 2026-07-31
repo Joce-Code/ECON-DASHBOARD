@@ -57,7 +57,10 @@ export async function getAlertRules() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error("Erro ao buscar alert_rules:", error)
+    return []
+  }
   return data
 }
 
