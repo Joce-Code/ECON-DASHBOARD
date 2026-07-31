@@ -81,6 +81,24 @@ export async function POST(req: Request) {
 function generateLocalContextualAnswer(query: string): string {
   const q = query.toLowerCase();
 
+  if (q.includes('cmig') || q.includes('cmig4') || q.includes('elet') || q.includes('elet3') || q.includes('energia') || q.includes('elétrico') || q.includes('eletrico')) {
+    return `**Análise de Impacto do Copom: Setor Elétrico & CMIG4 (Cemig)**
+
+Com base na Ata do Copom e Estrutura Financeira de Utilities:
+
+**1. Custo de Dívida & Alavancagem:**
+• Empresas do setor elétrico (como CMIG4) possuem estrutura de capital financiada por debêntures e dívidas atreladas ao CDI e IPCA. A Selic contracionista (14,00% a.a.) mantém as despesas financeiras elevadas.
+
+**2. Previsibilidade de Caixa & Reajuste Tarifário:**
+• Como compensação, os contratos de transmissão e distribuição possuem receitas previsíveis e reajustadas anualmente pela inflação (IPCA/IGP-M), protegendo o Ebitda operacional.
+
+**3. Dividendos vs Renda Fixa:**
+• A Selic elevada aumenta a concorrência entre o Dividend Yield de distribuidoras e a Renda Fixa isenta ou CDI, mas a resiliência de caixa da Cemig sustenta o perfil defensivo.
+
+**4. Diretriz Estratégica:**
+• Manutenção de posições defensivas no setor elétrico com foco em geração de caixa e fluxo de dividendos.`;
+  }
+
   if (q.includes('copom') || q.includes('investimento') || q.includes('investimentos') || q.includes('selic') || q.includes('juros') || q.includes('agosto')) {
     return `**Análise Institucional de Inteligência (Ata do Copom & Alocação)**
 
