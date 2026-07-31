@@ -33,10 +33,10 @@ export async function updatePortfolio(indicators: string[]) {
 
   const { error } = await supabase
     .from('portfolios')
-    .update({ indicators })
-    .eq('id', user.id)
+    .upsert({ id: user.id, indicators })
 
   if (error) {
+    console.error("Erro ao salvar portfolio:", error)
     throw new Error(error.message)
   }
 
