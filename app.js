@@ -858,55 +858,80 @@ function exportCSV() {
 ───────────────────────────────────────────── */
 async function loadFocusDetail() {
   const grid = document.getElementById('focus-grid');
+  if (!grid) return;
+
   const currentYear = new Date().getFullYear();
-  const nextYear = currentYear + 1;
 
   try {
-    const [ipcaCurr, selicCurr, cambCurr, pibCurr] = await Promise.all([
-      fetchFocusAnnual('IPCA', 50),
-      fetchFocusAnnual('Selic', 50),
-      fetchFocusAnnual('Câmbio', 50),
+    const [ipcaMonthly, selicMonthly, cambMonthly, pibAnnual] = await Promise.all([
+      fetchFocusMonthly('IPCA', 100),
+      fetchFocusMonthly('Selic', 100),
+      fetchFocusMonthly('Câmbio', 100),
       fetchFocusAnnual('PIB Total', 50),
     ]);
 
-    const getRow = (data, yr) => data.find(d => parseInt(d.DataReferencia) === yr) || null;
+    function getMonthlyRows(raw, unit) {
+      if (!raw || !raw.length) return '';
+      const latestDate = raw[0].Data;
+      const survey = raw.filter(r => r.Data === latestDate);
+
+      // Unique reference months sorted
+      const monthsMap = {};
+      survey.forEach(r => {
+        if (!monthsMap[r.DataReferencia]) monthsMap[r.DataReferencia] = r;
+      });
+
+      const sorted = Object.values(monthsMap)
+        .sort((a, b) => a.DataReferencia.localeCompare(b.DataReferencia))
+        .slice(0, 5); // Take 5 upcoming months
+
+      return sorted.map(r => {
+        const [m, y] = r.DataReferencia.split('/');
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const mLabel = `${monthNames[parseInt(m) - 1] ?? m}/${y.slice(2)}`;
+        const valStr = r.Mediana != null ? Number(r.Mediana).toFixed(2) + ' ' + unit : '—';
+        return `
+        <div class="focus-row">
+          <span class="focus-row-label">${mLabel}</span>
+          <span class="focus-row-value highlight">${valStr}</span>
+        </div>`;
+      }).join('');
+    }
+
+    const getAnnualRows = (raw, unit) => {
+      const byYr = {};
+      raw.filter(r => r.baseCalculo === 0).forEach(r => {
+        if (!byYr[r.DataReferencia]) byYr[r.DataReferencia] = r;
+      });
+      return [currentYear, currentYear + 1, currentYear + 2].map(yr => {
+        const r = byYr[yr];
+        const valStr = r?.Mediana != null ? Number(r.Mediana).toFixed(2) + ' ' + unit : '—';
+        return `
+        <div class="focus-row">
+          <span class="focus-row-label">${yr}</span>
+          <span class="focus-row-value">${valStr}</span>
+        </div>`;
+      }).join('');
+    };
 
     const cards = [
-      { title: 'IPCA', dataCurr: ipcaCurr, unit: '%' },
-      { title: 'Selic', dataCurr: selicCurr, unit: '% a.a.' },
-      { title: 'Câmbio', dataCurr: cambCurr, unit: 'R$' },
-      { title: 'PIB', dataCurr: pibCurr, unit: '%' },
+      { title: 'IPCA Mensal', badge: 'Próximos Meses', rows: getMonthlyRows(ipcaMonthly, '%') },
+      { title: 'Selic Projetada', badge: 'Reuniões Copom', rows: getMonthlyRows(selicMonthly, '% a.a.') },
+      { title: 'Câmbio Mensal', badge: 'Expectativa USD', rows: getMonthlyRows(cambMonthly, 'R$') },
+      { title: 'PIB Anual', badge: 'Projeção Anual', rows: getAnnualRows(pibAnnual, '%') },
     ];
 
-    grid.innerHTML = cards.map(c => {
-      const curr = getRow(c.dataCurr, currentYear);
-      const next = getRow(c.dataCurr, nextYear);
-
-      const makeRow = (label, val, suffix = '') => `
-        <div class="focus-row">
-          <span class="focus-row-label">${label}</span>
-          <span class="focus-row-value ${suffix}">${val != null ? Number(val).toFixed(2) + ' ' + c.unit : '—'}</span>
-        </div>`;
-
-      return `
+    grid.innerHTML = cards.map(c => `
       <div class="focus-card">
         <div class="focus-card-header">
           <span class="focus-card-title">${c.title}</span>
-          <span class="focus-card-year-badge">Focus ${currentYear}/${nextYear}</span>
+          <span class="focus-card-year-badge">${c.badge}</span>
         </div>
         <div class="focus-rows">
-          <div class="focus-row" style="padding-bottom:4px;border-bottom:1px solid rgba(99,120,180,0.15);margin-bottom:4px">
-            <span class="focus-row-label" style="font-size:0.62rem;text-transform:uppercase;letter-spacing:.06em">Ano</span>
-            <span class="focus-row-label" style="font-size:0.62rem;text-transform:uppercase;letter-spacing:.06em">Mediana</span>
-          </div>
-          ${makeRow(currentYear, curr?.Mediana, 'highlight')}
-          ${makeRow(nextYear, next?.Mediana)}
-          ${curr ? makeRow('Mín.', curr.Minimo) : ''}
-          ${curr ? makeRow('Máx.', curr.Maximo) : ''}
-          ${curr ? `<div class="focus-row"><span class="focus-row-label">Respondentes</span><span class="focus-row-value">${curr.numeroRespondentes ?? '—'}</span></div>` : ''}
+          ${c.rows}
         </div>
-      </div>`;
-    }).join('');
+      </div>
+    `).join('');
 
   } catch (err) {
     console.error('Focus detail error:', err);
