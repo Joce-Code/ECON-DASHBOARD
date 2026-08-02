@@ -96,7 +96,8 @@ async function tryGroqAPI(prompt: string, apiKey: string): Promise<string | null
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
       },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
