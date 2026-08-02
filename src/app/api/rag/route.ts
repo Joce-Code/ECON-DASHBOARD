@@ -17,7 +17,10 @@ export async function POST(req: Request) {
     const { query, clientApiKey } = await req.json();
     userQuery = query || "";
     
-    const apiKey = clientApiKey?.trim() || process.env.GEMINI_API_KEY;
+    // Suporte a múltiplas chaves de provedores (Groq, OpenRouter, Gemini)
+    const groqKey = process.env.GROQ_API_KEY;
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
+    const geminiKey = clientApiKey?.trim() || process.env.GEMINI_API_KEY;
 
     const prompt = `Você é o Agente de Inteligência Institucional do Focus Tracker. Seu público é focado em Tesouraria Corporativa e Estratégia.
     Responda à pergunta do usuário baseando-se estritamente na base de conhecimento oficial (Ata do Copom) fornecida.
@@ -27,7 +30,7 @@ export async function POST(req: Request) {
     Pergunta do Usuário: ${query}
     
     Regra 1: Não alucine informações de fora da base.
-    Regra 2: Responda de forma direta e profissional, com foco em impactos (juros, câmbio, custos institucionais).`;
+    Regra 2: Responda de forma direta e profissional em português do Brasil, com foco em impactos (juros, câmbio, custos institucionais).`;
 
     // 1. Tratar saudações simples sem consumir cota de IA
     const cleanQuery = (query || '').trim().toLowerCase();
@@ -38,12 +41,28 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. Se houver chave API configurada, tentar modelos Gemini em ordem de velocidade/cota
-    if (apiKey) {
+    // 2. Tentar Provedor 1: Groq API (Ultra-rápido ~500 t/s, Llama 3.3 70B)
+    if (groqKey) {
+      const groqAnswer = await tryGroqAPI(prompt, groqKey);
+      if (groqAnswer) {
+        return NextResponse.json({ answer: groqAnswer });
+      }
+    }
+
+    // 3. Tentar Provedor 2: OpenRouter Free Tier
+    if (openRouterKey) {
+      const openRouterAnswer = await tryOpenRouterAPI(prompt, openRouterKey);
+      if (openRouterAnswer) {
+        return NextResponse.json({ answer: openRouterAnswer });
+      }
+    }
+
+    // 4. Tentar Provedor 3: Google Gemini API (v1beta)
+    if (geminiKey) {
       const modelsToTry = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
       for (const model of modelsToTry) {
         try {
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -61,13 +80,65 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Fallback: Motor Institucional Local de Alta Precisão (Sem erros na UI)
+    // 5. Fallback: Motor Institucional Local de Alta Precisão (Sem erros na UI)
     return NextResponse.json({ answer: generateLocalContextualAnswer(cleanQuery, query) });
   } catch (error: any) {
     console.error("RAG Fatal Error:", error);
     return NextResponse.json({ 
       answer: generateLocalContextualAnswer("geral", userQuery || "geral")
     });
+  }
+}
+
+async function tryGroqAPI(prompt: string, apiKey: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: "Você é o Agente de Inteligência Institucional do Focus Tracker. Responda em português brasileiro de forma direta, técnica e corporativa." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 1000
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content || null;
+  } catch (err) {
+    console.warn("Groq API Error:", err);
+    return null;
+  }
+}
+
+async function tryOpenRouterAPI(prompt: string, apiKey: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.3-70b-instruct:free",
+        messages: [
+          { role: "system", content: "Você é o Agente de Inteligência Institucional do Focus Tracker." },
+          { role: "user", content: prompt }
+        ]
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content || null;
+  } catch (err) {
+    console.warn("OpenRouter Error:", err);
+    return null;
   }
 }
 
