@@ -13,6 +13,8 @@ A taxa Selic deve permanecer contracionista por mais tempo para assegurar a conv
 Aviso Estratégico: Tesourarias e empresas expostas a dívidas atreladas ao CDI devem revisar seus hedges cambiais e de juros para os próximos trimestres.
 `;
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const { query, clientApiKey } = await req.json();
@@ -35,7 +37,8 @@ export async function POST(req: Request) {
 
     // Tratar saudações simples sem consumir cota de IA
     const cleanQuery = query.trim().toLowerCase();
-    if (['oi', 'olá', 'ola', 'hey', 'bom dia', 'boa tarde', 'boa noite', 'ajuda'].includes(cleanQuery)) {
+    const greetings = ['oi', 'olá', 'ola', 'hey', 'bom dia', 'boa tarde', 'boa noite', 'ajuda', 'eae', 'eae man', 'salve', 'opa', 'opaa', 'suave', 'fala'];
+    if (greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' '))) {
       return NextResponse.json({ 
         answer: "Olá! Sou o Agente de Inteligência Institucional do Focus Tracker.\n\nComo posso ajudar você hoje? Você pode me perguntar sobre os impactos da Selic, projeções do IPCA, leitura das Atas do Copom ou estratégias de hedge para tesouraria corporativa." 
       });
