@@ -6,6 +6,8 @@ import WhatIfCalculator from "@/components/WhatIfCalculator";
 import RagChat from "@/components/RagChat";
 import KpiSection from "@/components/KpiSection";
 
+import RealProfitSimulator from "@/components/simulator/RealProfitSimulator";
+
 export const dynamic = 'force-dynamic';
 
 export default async function Page() {
@@ -20,6 +22,13 @@ export default async function Page() {
     <div className="space-y-8">
       {/* Dobra Superior: KPIs Customizados + Calendário (Reatividade em tempo real) */}
       <KpiSection kpis={kpis} />
+
+      {/* Simulador de Lucro Real & Trade-off FinTech */}
+      <section className="space-y-4">
+        <Suspense fallback={<div className="h-96 bg-[#0f172a] animate-pulse rounded-xl" />}>
+          <RealProfitSimulator />
+        </Suspense>
+      </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
