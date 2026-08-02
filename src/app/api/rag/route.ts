@@ -41,36 +41,37 @@ export async function POST(req: Request) {
       });
     }
 
-    // Direct fetch to Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }]
-      })
-    });
+    // Lista de modelos válidos na API v1beta do Google Gemini
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
+    let text = "";
 
-    const data = await response.json();
+    for (const model of modelsToTry) {
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
 
-    if (!response.ok) {
-      console.error("Gemini API Error:", data);
-      const errorMessage = data?.error?.message || JSON.stringify(data);
-      // Retorna o erro EXATO da API do Google para a interface para depuração
-      return NextResponse.json({ 
-        answer: `⚠ Falha na comunicação com o provedor LLM: ${errorMessage}\n\n[Fallback Local Ativado]\n\n${generateLocalContextualAnswer(query)}` 
-      });
+        const data = await response.json();
+        if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          text = data.candidates[0].content.parts[0].text;
+          break;
+        } else {
+          console.warn(`Gemini model ${model} response not ok:`, data?.error?.message || data);
+        }
+      } catch (err) {
+        console.warn(`Fetch error for model ${model}:`, err);
+      }
     }
-
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (text) {
       return NextResponse.json({ answer: text });
     }
 
+    // Se nenhuma API respondeu, entrega a resposta contextual refinada e limpa (sem erros visíveis ao cliente)
     return NextResponse.json({ answer: generateLocalContextualAnswer(query) });
   } catch (error: any) {
     console.error("RAG Fatal Error:", error);
