@@ -4,8 +4,8 @@ import { calculateIncomeTaxRate, calculateMonthlyB3Fee } from './taxCalculator';
 export function runSimulation(asset: AssetPreset, input: SimulationInput): SimulationResult {
   const { initialCapital, monthlyDeposit, months, selicRateYearly, ipcaRateYearly } = input;
 
-  // Taxa nominal a.a. do ativo com base na Selic informada
-  const annualNominalReturn = asset.annualNominalReturn(selicRateYearly);
+  // Taxa nominal a.a. do ativo com base na Selic informada e parâmetros customizados
+  const annualNominalReturn = asset.annualNominalReturn(selicRateYearly, input);
   const monthlyNominalReturnRate = Math.pow(1 + annualNominalReturn, 1 / 12) - 1;
 
   // Taxa de IPCA mensal

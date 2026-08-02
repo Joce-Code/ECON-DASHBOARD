@@ -14,7 +14,7 @@ export interface AssetPreset {
   name: string;
   category: AssetCategory;
   description: string;
-  annualNominalReturn: (selic: number) => number; // Retorno nominal bruto a.a. em decimal
+  annualNominalReturn: (selic: number, input?: SimulationInput) => number; // Retorno nominal bruto a.a. em decimal
   expectedDividendYieldYearly: number; // Para FIIs/Ações
   taxRules: AssetTaxRules;
   liquidityDays: number; // 0 = D+0, 1 = D+1, 1080 = 3 anos
@@ -28,6 +28,7 @@ export interface SimulationInput {
   months: number;
   selicRateYearly: number; // ex: 10.5 => 0.105
   ipcaRateYearly: number;  // ex: 4.0 => 0.040
+  customCdiPercent?: number; // ex: 110 (representa 110% do CDI)
   investorProfile: InvestorProfile;
   investmentGoal: InvestmentGoal;
   selectedAssetIds?: string[];

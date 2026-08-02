@@ -23,6 +23,7 @@ export default function RealProfitSimulator() {
     months: 60, // 5 anos
     selicRateYearly: 0.105, // Fallback inicial 10.5%
     ipcaRateYearly: 0.040,  // Fallback inicial 4.0%
+    customCdiPercent: 110,  // 110% do CDI padrão
     investorProfile: 'MODERADO',
     investmentGoal: 'ACUMULACAO_APOSENTADORIA',
   });

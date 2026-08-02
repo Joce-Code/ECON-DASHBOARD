@@ -24,8 +24,8 @@ export const InputForm: React.FC<Props> = ({
   };
 
   return (
-    <div className="glass-card p-6">
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
+    <div className="glass-card p-6 space-y-6">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2.5">
           <div className="bg-cyan-500/10 p-2.5 rounded-xl text-[var(--accent-cyan)]">
             <TrendingUp size={22} />
@@ -96,7 +96,7 @@ export const InputForm: React.FC<Props> = ({
         <div>
           <label className="flex items-center gap-1.5 text-xs text-slate-400 mb-2 font-medium">
             <Calendar size={16} className="text-[var(--accent-purple)]" />
-            Prazo de Aplicação ({Math.round(input.months / 12 * 10) / 10} anos / {input.months} meses)
+            Prazo ({Math.round(input.months / 12 * 10) / 10} anos / {input.months} meses)
           </label>
           <input
             type="range"
@@ -176,6 +176,52 @@ export const InputForm: React.FC<Props> = ({
             <option value="RENDA_PASSIVA">Geração de Renda Mensal (Ativo Natural)</option>
             <option value="ACUMULACAO_APOSENTADORIA">Acumulação & Aposentadoria (Longo Prazo)</option>
           </select>
+        </div>
+
+        {/* % do CDI Personalizado */}
+        <div className="sm:col-span-4 bg-slate-900/80 p-4 rounded-xl border border-cyan-500/25">
+          <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
+            <label className="flex items-center gap-2 text-sm text-cyan-400 font-bold">
+              <Percent size={18} className="text-cyan-400" />
+              Calculadora de Ativo com % do CDI Personalizado
+            </label>
+            <span className="text-xs font-mono font-bold text-white bg-cyan-500/20 px-3 py-1 rounded-lg border border-cyan-500/40">
+              Rentabilidade: {(input.customCdiPercent || 110)}% do CDI ({((input.selicRateYearly - 0.001) * ((input.customCdiPercent || 110) / 100) * 100).toFixed(2)}% a.a. Bruto)
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-medium">Porcentagem:</span>
+              <input
+                type="number"
+                step="1"
+                min="50"
+                max="300"
+                value={input.customCdiPercent || 110}
+                onChange={(e) => handleNumberChange('customCdiPercent', Math.max(1, Number(e.target.value)))}
+                className="w-28 px-3.5 py-1.5 rounded-lg bg-slate-950 border border-cyan-500/40 text-cyan-300 font-mono font-bold text-sm outline-none focus:border-cyan-400"
+              />
+              <span className="text-xs text-slate-400 font-bold">% do CDI</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {[80, 100, 110, 120, 130, 140, 150, 200].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => handleNumberChange('customCdiPercent', pct)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    (input.customCdiPercent || 110) === pct
+                      ? 'bg-cyan-400 text-slate-950 font-black shadow-lg shadow-cyan-500/30 scale-105'
+                      : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                  }`}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
