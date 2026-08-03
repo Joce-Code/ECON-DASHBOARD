@@ -21,18 +21,18 @@ export async function POST(req: Request) {
     // 1. Buscar Cotação Real via Brapi API pública ou Fallback
     const quoteData = await fetchAssetQuote(cleanTicker);
 
-    // 2. Chamar IA (Groq Llama 3.3 70B / Gemini / Fallback Local)
-    const aiAnalysis = await generateAiNewsAndMacro(cleanTicker, quoteData);
+    // 2. Diagnóstico Quantitativo e Notícias Institucionais (Sem LLM / Sem IA)
+    const quantitativeAnalysis = generateQuantitativeAnalysis(cleanTicker, quoteData);
 
     return NextResponse.json({
       quote: quoteData,
-      analysis: aiAnalysis,
+      analysis: quantitativeAnalysis,
     });
   } catch (error: any) {
     console.error('Error in asset-news API:', error);
     const fallbackTicker = 'BOVA11';
     const fallbackQuote = generateFallbackQuote(fallbackTicker);
-    const fallbackAnalysis = generateLocalMacroAndNews(fallbackTicker, fallbackQuote);
+    const fallbackAnalysis = generateQuantitativeAnalysis(fallbackTicker, fallbackQuote);
     return NextResponse.json({
       quote: fallbackQuote,
       analysis: fallbackAnalysis,
@@ -98,124 +98,43 @@ function generateFallbackQuote(ticker: string): AssetQuoteData {
   };
 }
 
-async function generateAiNewsAndMacro(ticker: string, quote: AssetQuoteData) {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const prompt = `Você é o Diretor de Inteligência Financeira e Análise de Mercado do Focus Tracker. Seu trabalho é pesquisar a internet AGORA, ler as últimas notícias e fechar um diagnóstico em tempo real.
-Hoje é ${hoje}.
-
-Ativo em análise: ${ticker} (${quote.name}) 
-Cotação atual: R$ ${quote.price.toFixed(2)} 
-Variação diária: ${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}%.
-
-DIRETRIZES CRÍTICAS PARA BUSCA NA WEB:
-1. ATENÇÃO À DATA: Verifique as notícias publicadas HOJE e NOS ÚLTIMOS 2 DIAS sobre o ativo e sobre o Brasil (Selic, IPCA, Dólar, Dívida). 
-2. POSICIONAMENTO MACRO: Não seja genérico! Use as notícias para assumir uma postura crítica. Se o endividamento e a Selic estão ruins, afirme sem medo que a macroeconomia está ruim.
-3. Não invente! Traga os títulos reais das notícias que você encontrar na internet.
-
-Forneça um relatório em formato JSON (e SOMENTE JSON) com o seguinte esquema:
-{
-  "sentiment": "BULLISH" ou "BEARISH" ou "NEUTRAL",
-  "sentimentScore": número de 0 a 100,
-  "sentimentReason": "uma frase curta resumindo o motivo",
-  "newsList": [
-    {
-      "title": "Manchete real e atual sobre ${ticker} ou seu setor",
-      "summary": "Resumo da notícia encontrada",
-      "impact": "POSITIVO" ou "NEGATIVO" ou "NEUTRO",
-      "impactDetail": "Explicação do impacto"
-    },
-    { "title": "Manchete 2", "summary": "Resumo 2", "impact": "...", "impactDetail": "..." },
-    { "title": "Manchete 3", "summary": "Resumo 3", "impact": "...", "impactDetail": "..." }
-  ],
-  "catalysts": [
-    "Catalisador real (evento futuro próximo)",
-    "Catalisador real 2"
-  ],
-  "macroSummary": {
-    "macroDiagnosis": "Diagnóstico contundente baseado nas notícias de hoje (ex: detone a dívida e juros altos ou elogie o crescimento, seja 100% fiel à realidade da web de hoje).",
-    "fixedIncomeCDI": "Análise direta para CDI hoje.",
-    "fixedIncomeIPCAAndPre": "Análise direta para IPCA+ hoje.",
-    "equityStocks": "Análise crítica para Ações e Custo de Capital hoje.",
-    "equityFIIs": "Análise para FIIs hoje."
-  }
-}
-
-Responda APENAS o JSON válido sem nenhum texto adicional.`;
-
-  if (geminiKey) {
-    try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          tools: [{ googleSearch: {} }],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: "application/json"
-          }
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (content) {
-          const parsed = JSON.parse(content);
-          if (parsed.sentiment && parsed.macroSummary) {
-            return parsed;
-          }
-        }
-      } else {
-        console.warn('Gemini API Error:', await response.text());
-      }
-    } catch (err) {
-      console.warn('Gemini AI generation failed, fallback to local engine:', err);
-    }
-  }
-
-  // Fallback se não tiver chave do Gemini ou erro
-  return generateLocalMacroAndNews(ticker, quote);
-}
-
-function generateLocalMacroAndNews(ticker: string, quote: AssetQuoteData) {
+function generateQuantitativeAnalysis(ticker: string, quote: AssetQuoteData) {
   const isPositive = quote.changePercent >= 0;
 
   return {
     sentiment: isPositive ? 'BULLISH' : 'BEARISH',
-    sentimentScore: isPositive ? 74 : 35,
-    sentimentReason: `O cenário macro sufoca a bolsa, mas ${ticker} ${isPositive ? 'consegue atrair fluxo defensivo' : 'sofre duramente com o prêmio de risco elevado'}.`,
+    sentimentScore: isPositive ? 72 : 38,
+    sentimentReason: `Variação do pregão de ${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}% indica ${isPositive ? 'pressão compradora e atratividade quantitativa' : 'pressão vendedora diante do custo de oportunidade da Selic'}.`,
     newsList: [
       {
-        title: `Mercado reflete o rombo fiscal e pune os ativos`,
-        summary: `A trajetória explosiva da dívida pública e o descontrole dos gastos do governo destroem a confiança. Os investidores exigem taxas cada vez maiores para financiar o Brasil.`,
+        title: `Curva de Juros & Trajetória Fiscal do Brasil`,
+        summary: `A manutenção da taxa Selic em 14,00% a.a. pelo Banco Central mantém o custo de capital elevado para as empresas listadas na B3.`,
         impact: 'NEGATIVO',
-        impactDetail: 'A elevação do custo de capital penaliza fortemente o valuation das empresas listadas.',
+        impactDetail: 'Elevado custo de dívida reduz margens operacionais de companhias alavancadas.',
       },
       {
-        title: `Fluxo Institucional & Posicionamento em ${ticker}`,
-        summary: `As movimentações na semana para ${ticker} indicam que o "Smart Money" está focando apenas em negócios extremamente resilientes para sobreviver à turbulência.`,
-        impact: isPositive ? 'POSITIVO' : 'NEGATIVO',
-        impactDetail: 'Ativos sem geração de caixa livre forte estão sendo esmagados.',
+        title: `Fluxo de Mercado Institucional & Liquidez em ${ticker}`,
+        summary: `As negociações diárias em ${ticker} registram volume estimado em R$ ${(quote.volume / 1000000).toFixed(1)}M, refletindo o apetite dos investidores locais por papéis de valor.`,
+        impact: isPositive ? 'POSITIVO' : 'NEUTRO',
+        impactDetail: 'Ativos com alta liquidez mantêm o prêmio de risco controlado.',
       },
       {
-        title: 'Balanço Semanal: Ausência de Gatilhos',
-        summary: 'No cenário atual, não há notícias positivas consistentes que sustentem um rali na B3 sem a âncora fiscal.',
+        title: `Expectativa Inflacionária (Boletim Focus / IBGE)`,
+        summary: `Projeção do IPCA em 4,50% mantém os títulos públicos indexados à inflação (Tesouro IPCA+) em patamares atrativos de cupom real (IPCA + 6,5%).`,
         impact: 'NEUTRO',
-        impactDetail: 'Lateralização ou fuga para qualidade (Tesouro IPCA+) marcam o ritmo dos negócios.',
+        impactDetail: 'Preservação de capital garantida em papéis pós-fixados e indexados à inflação.',
       },
     ],
     catalysts: [
-      `Leituras de inflação (IPCA) e desdobramentos de política fiscal que ditarão o humor do Copom.`,
-      `Resultados operacionais para tentar justificar múltiplos e defender posições em ${ticker}.`,
+      `Próxima reunião do Copom e divulgação da Ata de Política Monetária.`,
+      `Divulgação dos relatórios trimestrais e proventos declarados por ${ticker}.`,
     ],
     macroSummary: {
-      macroDiagnosis: 'A macroeconomia brasileira está HORRÍVEL. O descontrole do endividamento público e o risco fiscal crônico forçam o Banco Central a manter uma Selic asfixiante de 14,00%. A falta de compromisso com cortes de gastos joga os juros futuros para o alto, implodindo a confiança e destruindo as perspectivas de crescimento econômico sustentável.',
-      fixedIncomeCDI: 'É o refúgio óbvio. Com a macroeconomia em frangalhos, render ~1% ao mês sem risco de mercado (marcação) via fundos DI ou CDBs de grandes bancos é a melhor proteção contra o populismo fiscal.',
-      fixedIncomeIPCAAndPre: 'O prêmio de risco explodiu. Tesouro IPCA+ oferecendo taxas reais acima de 6.5% a.a. reflete o desespero do governo para se financiar. Excelente para carregar até o vencimento, mas perigoso no curto prazo devido à volatilidade diária.',
-      equityStocks: `Um massacre. O custo de capital nas alturas joga os múltiplos (P/L) das ações no chão. Para ações como ${ticker}, o mercado está cobrando uma margem de segurança brutal. Só sobrevivem empresas com forte geração de caixa e dividendos.`,
-      equityFIIs: 'Os FIIs sofrem com os juros altos competindo pela liquidez, com as cotas negociadas a descontos agressivos (P/VP < 1.0). Ótimo para quem quer acumular renda isenta de longo prazo aproveitando o pessimismo geral.',
+      macroDiagnosis: 'A conjuntura macroeconômica brasileira permanece sob forte impacto do endividamento público e da taxa Selic mantida em 14,00% a.a. Esse ambiente contracionista visa desacelerar as expectativas de inflação (IPCA a 4,50%), impondo rigor na alocação de capital e na gestão de tesourarias corporativas.',
+      fixedIncomeCDI: 'Títulos pós-fixados (CDI e Tesouro Selic) oferecem rentabilidade bruta superior a 1,00% ao mês com baixíssimo risco de mercado, configurando o melhor ativo defensivo de liquidez imediata.',
+      fixedIncomeIPCAAndPre: 'Títulos IPCA+ oferecem taxas reais historicamente elevadas (IPCA + 6,5% a.a.), demandando contudo atenção com a marcação a mercado caso a curva DI oscile no curto prazo.',
+      equityStocks: `Para ativos de renda variável como ${ticker}, o custo de oportunidade da Selic comprime os múltiplos de valuation, favorecendo empresas resilientes com forte geração de caixa e dividendos.`,
+      equityFIIs: 'Fundos Imobiliários (FIIs) continuam oferecendo proventos mensais isentos de Imposto de Renda com rendimentos médios atrativos em relação aos títulos públicos.',
     },
   };
 }

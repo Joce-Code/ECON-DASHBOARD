@@ -47,13 +47,6 @@ export default async function Page() {
         </div>
       </section>
 
-      <section className="space-y-4">
-        <h3 className="text-lg font-medium text-white">Agente de Inteligência Institucional (RAG)</h3>
-        <Suspense fallback={<div className="h-24 bg-[#0f172a] animate-pulse rounded-xl" />}>
-          <RagChat />
-        </Suspense>
-      </section>
-
       {/* Lazy Loaded Sections */}
       <section className="space-y-4">
         <h3 className="text-lg font-medium text-white">Simulador de Cenários Base-Correlacionado</h3>

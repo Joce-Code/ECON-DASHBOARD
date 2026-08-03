@@ -39,24 +39,26 @@ export default async function RootLayout({
               </h1>
             </Link>
             
-            {session && (
-              <nav className="flex items-center gap-4 text-sm font-medium">
-                <Link href="/" className="text-slate-300 hover:text-cyan-400 transition-colors">Painel</Link>
-                <Link href="/news" className="text-slate-300 hover:text-cyan-400 transition-colors">Notícias & Ativo</Link>
-                <Link href="/simulator" className="text-slate-300 hover:text-cyan-400 transition-colors">Simulador</Link>
-                <Link href="/settings" className="text-slate-300 hover:text-cyan-400 transition-colors">Alertas</Link>
-                <form action={async () => {
-                  "use server"
-                  const supabase = await createClient();
-                  await supabase.auth.signOut();
-                  redirect("/login");
-                }}>
-                  <button type="submit" className="text-rose-400 hover:text-rose-300 transition-colors cursor-pointer">
-                    Sair
-                  </button>
-                </form>
-              </nav>
-            )}
+            <div className="flex items-center gap-4 text-sm font-medium">
+              {session && (
+                <nav className="flex items-center gap-4">
+                  <Link href="/" className="text-slate-300 hover:text-cyan-400 transition-colors">Painel</Link>
+                  <Link href="/news" className="text-slate-300 hover:text-cyan-400 transition-colors">Notícias & Ativo</Link>
+                  <Link href="/simulator" className="text-slate-300 hover:text-cyan-400 transition-colors">Simulador</Link>
+                  <Link href="/settings" className="text-slate-300 hover:text-cyan-400 transition-colors">Alertas</Link>
+                  <form action={async () => {
+                    "use server"
+                    const supabase = await createClient();
+                    await supabase.auth.signOut();
+                    redirect("/login");
+                  }}>
+                    <button type="submit" className="text-rose-400 hover:text-rose-300 transition-colors cursor-pointer">
+                      Sair
+                    </button>
+                  </form>
+                </nav>
+              )}
+            </div>
           </header>
           {children}
         </main>
