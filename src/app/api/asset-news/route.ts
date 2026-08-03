@@ -100,8 +100,17 @@ function generateFallbackQuote(ticker: string): AssetQuoteData {
 
 async function generateAiNewsAndMacro(ticker: string, quote: AssetQuoteData) {
   const groqKey = process.env.GROQ_API_KEY;
-  const prompt = `Você é o Diretor de Inteligência Financeira e Análise de Mercado do Focus Tracker.
-Analise o ativo ${ticker} (${quote.name}) atualmente cotado a R$ ${quote.price.toFixed(2)} com variação diária de ${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}%.
+  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const prompt = `Você é o Diretor de Inteligência Financeira e Análise de Mercado do Focus Tracker, conhecido por suas opiniões fortes, diretas e contundentes.
+Hoje é ${hoje}.
+
+Ativo em análise: ${ticker} (${quote.name}) 
+Cotação atual: R$ ${quote.price.toFixed(2)} 
+Variação diária: ${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}%.
+
+DIRETRIZES CRÍTICAS:
+1. ATENÇÃO À DATA: Verifique o dia da semana atual. Se ontem ou hoje for fim de semana (Sábado/Domingo), os mercados da B3 estão FECHADOS. NÃO invente notícias de "quedas" ou "altas" de mercado ocorridas no fim de semana.
+2. POSICIONAMENTO MACRO: Não seja genérico! Assuma uma postura crítica e direta. Se o endividamento público está alto, afirme sem medo que a macroeconomia está "horrível" devido à trajetória da dívida fiscal e como isso pune severamente os ativos de risco.
 
 Forneça um relatório em formato JSON com o seguinte esquema estrito:
 {
@@ -110,34 +119,34 @@ Forneça um relatório em formato JSON com o seguinte esquema estrito:
   "sentimentReason": "uma frase curta resumindo o motivo do sentimento",
   "newsList": [
     {
-      "title": "Manchete relevante da notícia 1 sobre ${ticker} ou seu setor",
+      "title": "Manchete relevante e real (ou baseada na conjuntura da semana) sobre ${ticker}",
       "summary": "Resumo executivo de 2 frases mostrando o fato relevante",
       "impact": "POSITIVO" ou "NEGATIVO" ou "NEUTRO",
       "impactDetail": "Explicação do impacto no valuation e nos resultados do ativo"
     },
     {
-      "title": "Manchete relevante da notícia 2",
-      "summary": "Resumo executivo da notícia 2",
+      "title": "Manchete 2",
+      "summary": "Resumo 2",
       "impact": "POSITIVO" ou "NEGATIVO" ou "NEUTRO",
-      "impactDetail": "Explicação do impacto"
+      "impactDetail": "Explicação"
     },
     {
-      "title": "Manchete relevante da notícia 3",
-      "summary": "Resumo executivo da notícia 3",
+      "title": "Manchete 3",
+      "summary": "Resumo 3",
       "impact": "POSITIVO" ou "NEGATIVO" ou "NEUTRO",
-      "impactDetail": "Explicação do impacto"
+      "impactDetail": "Explicação"
     }
   ],
   "catalysts": [
-    "Catalisador 1 da semana para o ativo",
-    "Catalisador 2 da semana para o ativo"
+    "Catalisador 1 real para os próximos dias",
+    "Catalisador 2 real para os próximos dias"
   ],
   "macroSummary": {
-    "macroDiagnosis": "Diagnóstico completo da conjuntura macroeconômica brasileira (Selic em 14.00%, incerteza fiscal, transmissão dos juros americanos do Fed e curva de juros DI).",
-    "fixedIncomeCDI": "Análise detalhada da tendência para títulos Pós-fixados (CDI) e liquidez diária.",
-    "fixedIncomeIPCAAndPre": "Análise da tendência para títulos Pré-fixados e Tesouro IPCA+ (marcação a mercado e prêmios de risco).",
-    "equityStocks": "Análise da tendência para Ações e ETFs de Renda Variável (como ${ticker} e Ibovespa) diante do custo de capital elevado.",
-    "equityFIIs": "Análise da tendência para Fundos Imobiliários (FIIs), descontos sobre VP e proventos isentos."
+    "macroDiagnosis": "Diagnóstico extremamente posicionado e crítico da macroeconomia brasileira (ex: detone a questão do endividamento e risco fiscal de forma contundente e como isso força a Selic).",
+    "fixedIncomeCDI": "Análise direta para títulos Pós-fixados (CDI).",
+    "fixedIncomeIPCAAndPre": "Análise direta para títulos Pré-fixados e IPCA+.",
+    "equityStocks": "Análise crítica para Renda Variável, focando no massacre do custo de capital nas ações.",
+    "equityFIIs": "Análise para Fundos Imobiliários."
   }
 }
 
@@ -185,39 +194,39 @@ function generateLocalMacroAndNews(ticker: string, quote: AssetQuoteData) {
   const isPositive = quote.changePercent >= 0;
 
   return {
-    sentiment: isPositive ? 'BULLISH' : 'NEUTRAL',
-    sentimentScore: isPositive ? 74 : 52,
-    sentimentReason: `Resiliência de fluxo institucional e prêmio de risco atrativo para ${ticker} no patamar atual.`,
+    sentiment: isPositive ? 'BULLISH' : 'BEARISH',
+    sentimentScore: isPositive ? 74 : 35,
+    sentimentReason: `O cenário macro sufoca a bolsa, mas ${ticker} ${isPositive ? 'consegue atrair fluxo defensivo' : 'sofre duramente com o prêmio de risco elevado'}.`,
     newsList: [
       {
-        title: `Fluxo Institucional & Balanço Setorial de ${ticker}`,
-        summary: `As movimentações mais recentes em ${ticker} indicam manutenção do interesse de investidores focados em carregar posições com forte margem de segurança.`,
-        impact: 'POSITIVO',
-        impactDetail: 'Entrada de capital em ETFs de índice e papéis líderes sustenta o suporte no curto prazo.',
+        title: `Mercado reflete o rombo fiscal e pune os ativos`,
+        summary: `A trajetória explosiva da dívida pública e o descontrole dos gastos do governo destroem a confiança. Os investidores exigem taxas cada vez maiores para financiar o Brasil.`,
+        impact: 'NEGATIVO',
+        impactDetail: 'A elevação do custo de capital penaliza fortemente o valuation das empresas listadas.',
       },
       {
-        title: 'Política Monetária & Transmissão dos Juros no Valuation',
-        summary: 'A Selic mantida em nível contracionista pelo Copom impõe rigor nas taxas de desconto utilizadas pelos analistas para avaliar empresas brasileiras.',
-        impact: 'NEUTRO',
-        impactDetail: 'Empresas geradoras de caixa livre continuam se destacando frente às companhias excessivamente alavancadas.',
-      },
-      {
-        title: 'Expectativas Inflacionárias & Cenário Fiscal no Brasil',
-        summary: 'O Boletim Focus aponta monitoramento estrito do IPCA, influenciando os prêmios exigidos pelos investidores na curva longa de juros.',
+        title: `Fluxo Institucional & Posicionamento em ${ticker}`,
+        summary: `As movimentações na semana para ${ticker} indicam que o "Smart Money" está focando apenas em negócios extremamente resilientes para sobreviver à turbulência.`,
         impact: isPositive ? 'POSITIVO' : 'NEGATIVO',
-        impactDetail: 'A estabilização do câmbio e das commodities mitiga choques na margem das companhias.',
+        impactDetail: 'Ativos sem geração de caixa livre forte estão sendo esmagados.',
+      },
+      {
+        title: 'Balanço Semanal: Ausência de Gatilhos',
+        summary: 'No cenário atual, não há notícias positivas consistentes que sustentem um rali na B3 sem a âncora fiscal.',
+        impact: 'NEUTRO',
+        impactDetail: 'Lateralização ou fuga para qualidade (Tesouro IPCA+) marcam o ritmo dos negócios.',
       },
     ],
     catalysts: [
-      `Divulgação dos novos dados de produção e resultados trimestrais relacionados a ${ticker}`,
-      'Reunião do Copom e ata de sinalização sobre a trajetória futura da taxa Selic',
+      `Leituras de inflação (IPCA) e desdobramentos de política fiscal que ditarão o humor do Copom.`,
+      `Resultados operacionais para tentar justificar múltiplos e defender posições em ${ticker}.`,
     ],
     macroSummary: {
-      macroDiagnosis: 'O cenário macroeconômico brasileiro permanece pautado pela cautela monetária. O Banco Central mantém a Selic em 14,00% a.a. para conter a desancoragem das expectativas inflacionárias, em um ambiente de incertezas fiscais e volatilidade nas taxas dos Treasuries americanos (Fed).',
-      fixedIncomeCDI: 'Títulos pós-fixados (CDI) continuam entregando retornos reais expressivos (Selic a 14,00% vs IPCA a ~4,5%), representando a melhor alternativa para preservação de capital e liquidez imediata com baixíssimo risco de crédito.',
-      fixedIncomeIPCAAndPre: 'Os títulos pré-fixados e NTN-B (Tesouro IPCA+) oferecem taxas reais historicamente elevadas (IPCA + 6,5% a.a.). Contudo, exigem atenção com a Marcação a Mercado no curto prazo diante das oscilações da curva de juros futura (DI).',
-      equityStocks: `Para Renda Variável e ETFs como ${ticker}, o custo de capital elevado comprime os múltiplos de Valuation (P/L). No entanto, o Ibovespa é negociado a descontos relevantes em relação à média histórica, favorecendo ações de valor e distribuidoras de dividendos.`,
-      equityFIIs: 'Os Fundos Imobiliários (FIIs) continuam oferecendo um Dividend Yield médio atrativo e isento de IR. O desconto de cotas físicas em relação ao Valor Patrimonial (P/VP < 1.0) cria janelas de acumulação no longo prazo.',
+      macroDiagnosis: 'A macroeconomia brasileira está HORRÍVEL. O descontrole do endividamento público e o risco fiscal crônico forçam o Banco Central a manter uma Selic asfixiante de 14,00%. A falta de compromisso com cortes de gastos joga os juros futuros para o alto, implodindo a confiança e destruindo as perspectivas de crescimento econômico sustentável.',
+      fixedIncomeCDI: 'É o refúgio óbvio. Com a macroeconomia em frangalhos, render ~1% ao mês sem risco de mercado (marcação) via fundos DI ou CDBs de grandes bancos é a melhor proteção contra o populismo fiscal.',
+      fixedIncomeIPCAAndPre: 'O prêmio de risco explodiu. Tesouro IPCA+ oferecendo taxas reais acima de 6.5% a.a. reflete o desespero do governo para se financiar. Excelente para carregar até o vencimento, mas perigoso no curto prazo devido à volatilidade diária.',
+      equityStocks: `Um massacre. O custo de capital nas alturas joga os múltiplos (P/L) das ações no chão. Para ações como ${ticker}, o mercado está cobrando uma margem de segurança brutal. Só sobrevivem empresas com forte geração de caixa e dividendos.`,
+      equityFIIs: 'Os FIIs sofrem com os juros altos competindo pela liquidez, com as cotas negociadas a descontos agressivos (P/VP < 1.0). Ótimo para quem quer acumular renda isenta de longo prazo aproveitando o pessimismo geral.',
     },
   };
 }
