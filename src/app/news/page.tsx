@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   TrendingUp, TrendingDown, RefreshCw, Search, Info, ShieldAlert, Zap, 
   Newspaper, Layers, CheckCircle2, ArrowUpRight, ArrowDownRight, Globe2,
-  DollarSign, Activity, FileText, Sparkles
+  DollarSign, Activity, FileText, Sparkles, Filter, Tag, Compass, Eye, SlidersHorizontal
 } from 'lucide-react';
 
 interface AssetQuote {
@@ -19,10 +19,13 @@ interface AssetQuote {
 }
 
 interface NewsItem {
+  id: string;
   title: string;
   summary: string;
   impact: 'POSITIVO' | 'NEGATIVO' | 'NEUTRO';
   impactDetail: string;
+  category: 'Inflação' | 'Juros/Selic' | 'Câmbio/Dólar' | 'Ações/FIIs' | 'Fiscal';
+  userTags: string[];
 }
 
 interface AiAnalysis {
@@ -40,7 +43,38 @@ interface AiAnalysis {
   };
 }
 
-// Dicionário de Tooltips Educativos para os Indicadores e Seções Macro
+// Best Bets Dictionary (Instant Answers for High-Intent Queries)
+const BEST_BETS: Record<string, { title: string; subtitle: string; highlight: string; linkText: string; linkAction: string }> = {
+  SELIC: {
+    title: '🎯 Best Bet: Taxa Selic Oficial',
+    subtitle: 'Atualmente em 14,00% a.a. definida pelo Copom.',
+    highlight: 'Rendimento de 100% do CDI equivale a ~1,08% ao mês líquido de IR em prazos curtos.',
+    linkText: 'Simular Investimento em Selic',
+    linkAction: '/simulator'
+  },
+  IPCA: {
+    title: '🎯 Best Bet: Inflação Oficial (IPCA)',
+    subtitle: 'Expectativa Focus em 4,50% no acumulado de 12 meses.',
+    highlight: 'Tesouro IPCA+ com cupom real de IPCA + 6,55% a.a. oferece proteção máxima de patrimônio.',
+    linkText: 'Ver Títulos IPCA+ no Simulador',
+    linkAction: '/simulator'
+  },
+  DOLAR: {
+    title: '🎯 Best Bet: Câmbio Dólar PTAX (USD/BRL)',
+    subtitle: 'Cotação de referência calculada pelo Banco Central.',
+    highlight: 'Empresas exportadoras (PETR4, VALE3) e o ETF IVVB11 protegem contra a desvalorização cambial.',
+    linkText: 'Analisar Ativos em Dólar',
+    linkAction: '/news'
+  },
+  BOVA11: {
+    title: '🎯 Best Bet: ETF iShares Ibovespa (BOVA11)',
+    subtitle: 'Replica a carteira teórica do Índice Bovespa.',
+    highlight: 'Negociado a múltiplos descontados frente à média histórica de 10 anos.',
+    linkText: 'Acompanhar BOVA11 em Tempo Real',
+    linkAction: '/news'
+  }
+};
+
 const MACRO_TOOLTIPS: Record<string, { concept: string; macroRelation: string; assetImpact: string }> = {
   SELIC: {
     concept: 'A Selic é a taxa básica de juros da economia brasileira, definida pelo Banco Central (Copom).',
@@ -50,32 +84,17 @@ const MACRO_TOOLTIPS: Record<string, { concept: string; macroRelation: string; a
   IPCA: {
     concept: 'O IPCA é o índice oficial de inflação do Brasil, medido pelo IBGE.',
     macroRelation: 'Mede o aumento do custo de vida e perda de poder de compra da moeda.',
-    assetImpact: 'Títulos indexados ao IPCA (NTN-B) protegem o patrimônio real. Inflação alta corrói lucros de empresas que não repassam preços.'
+    assetImpact: 'Títulos indexados ao IPCA (NTN-B) protegem o patrimônio real.'
   },
   DOLAR: {
     concept: 'A taxa PTAX representa a cotação média diária do Dólar americano calculada pelo Banco Central.',
-    macroRelation: 'Dólar alto encarece insumos importados e combustíveis, gerando pressão inflacionária de custos.',
-    assetImpact: 'Favorece exportadoras (ex: Vale, Petrobras, IVVB11) e pressiona empresas voltadas exclusivamente ao mercado interno.'
+    macroRelation: 'Dólar alto encarece insumos importados e combustíveis.',
+    assetImpact: 'Favorece exportadoras (PETR4, VALE3, IVVB11).'
   },
   CURVA_DI: {
-    concept: 'A Curva DI representa as taxas de juros negociadas no mercado futuro (B3) para prazos de 1 a 10 anos.',
-    macroRelation: 'Reflete a expectativa do mercado sobre a saúde fiscal do governo e a inflação futura.',
-    assetImpact: 'Juros futuros altos causam desvalorização imediata em títulos pré-fixados/IPCA+ e em cotas de Fundos Imobiliários (FIIs).'
-  },
-  MACRO_GERAL: {
-    concept: 'O cenário macroeconômico engloba a saúde da economia nacional e internacional.',
-    macroRelation: 'Combina política monetária (juros), política fiscal (gastos do governo) e liquidez global (Fed/EUA).',
-    assetImpact: 'Define o fluxo de capital de grandes fundos institucionais entre ativos de proteção e ativos de risco.'
-  },
-  RENDA_FIXA: {
-    concept: 'Classe de investimentos com regras de remuneração definidas no momento da aplicação.',
-    macroRelation: 'Principal instrumento de captação de recursos para bancos (CDB) e para o governo (Tesouro).',
-    assetImpact: 'Em momentos de Selic a 14%, oferece o melhor prêmio de risco com rentabilidade real expressiva e segurança.'
-  },
-  RENDA_VARIAVEL: {
-    concept: 'Classe de ativos em que os retornos não são garantidos, variando conforme oferta e mercado (Ações, ETFs, FIIs).',
-    macroRelation: 'Financia a expansão de empresas e projetos imobiliários da economia real.',
-    assetImpact: 'Sensível ao ciclo de juros. Oferece alto potencial de valorização e dividendos no longo prazo.'
+    concept: 'A Curva DI representa as taxas de juros negociadas no mercado futuro (B3).',
+    macroRelation: 'Reflete a expectativa do mercado sobre a saúde fiscal do governo.',
+    assetImpact: 'Juros futuros altos causam marcação a mercado negativa em pré-fixados e FIIs.'
   }
 };
 
@@ -84,12 +103,24 @@ const POPULAR_TICKERS = ['BOVA11', 'PETR4', 'VALE3', 'BBAS3', 'CMIG4', 'IVVB11',
 export default function NewsPage() {
   const [selectedTicker, setSelectedTicker] = useState<string>('BOVA11');
   const [inputTicker, setInputTicker] = useState<string>('');
+  const [searchZone, setSearchZone] = useState<string>('TUDO');
   const [quote, setQuote] = useState<AssetQuote | null>(null);
   const [analysis, setAnalysis] = useState<AiAnalysis | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
-  // Carregar ativo favorito salvo no localStorage ao iniciar
+  // Faceted Search State (Berry-picking)
+  const [selectedCategoryFacet, setSelectedCategoryFacet] = useState<string>('TODOS');
+  const [selectedImpactFacet, setSelectedImpactFacet] = useState<string>('TODOS');
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+
+  // Folksonomy State (User Tags)
+  const [customTags, setCustomTags] = useState<Record<string, string[]>>({});
+  const [newTagInput, setNewTagInput] = useState<string>('');
+
+  // Algorithmic Ethics & Serendipity Mode
+  const [serendipityMode, setSerendipityMode] = useState<boolean>(false);
+
   useEffect(() => {
     const savedTicker = localStorage.getItem('user_favorite_asset');
     if (savedTicker) {
@@ -107,9 +138,20 @@ export default function NewsPage() {
       });
       const data = await res.json();
       setQuote(data.quote);
-      setAnalysis(data.analysis);
+      
+      // Enriquecer notícias com categorias e ids para facetas
+      const enrichedNews = data.analysis?.newsList?.map((item: any, idx: number) => ({
+        ...item,
+        id: `news-${idx}`,
+        category: idx === 0 ? 'Fiscal' : idx === 1 ? 'Ações/FIIs' : 'Juros/Selic',
+        userTags: ['#analise-macro', '#b3-brasil']
+      })) || [];
 
-      // Salvar no localStorage como favorito
+      setAnalysis({
+        ...data.analysis,
+        newsList: enrichedNews
+      });
+
       localStorage.setItem('user_favorite_asset', ticker);
     } catch (err) {
       console.error('Erro ao buscar notícias do ativo:', err);
@@ -122,395 +164,445 @@ export default function NewsPage() {
     fetchNewsAndData(selectedTicker);
   }, [selectedTicker, fetchNewsAndData]);
 
-  const handleSelectTicker = (t: string) => {
-    const clean = t.trim().toUpperCase();
-    if (clean) {
-      setSelectedTicker(clean);
-      setInputTicker('');
-    }
-  };
+  // Best Bet correspondente à busca do usuário
+  const activeBestBet = useMemo(() => {
+    const term = inputTicker.trim().toUpperCase() || selectedTicker.toUpperCase();
+    return BEST_BETS[term] || null;
+  }, [inputTicker, selectedTicker]);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  // Adicionar Tag ao Ativo (Folksonomia)
+  const handleAddCustomTag = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputTicker.trim()) {
-      handleSelectTicker(inputTicker);
-    }
+    if (!newTagInput.trim()) return;
+    const tagClean = newTagInput.startsWith('#') ? newTagInput.trim() : `#${newTagInput.trim()}`;
+    setCustomTags(prev => ({
+      ...prev,
+      [selectedTicker]: [...(prev[selectedTicker] || ['#favorito', '#tesouraria']), tagClean]
+    }));
+    setNewTagInput('');
   };
 
-  const formatBRL = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  // Filtragem Facetada (Berry-picking)
+  const filteredNews = useMemo(() => {
+    if (!analysis?.newsList) return [];
+    let list = [...analysis.newsList];
+
+    if (selectedCategoryFacet !== 'TODOS') {
+      list = list.filter(item => item.category === selectedCategoryFacet);
+    }
+    if (selectedImpactFacet !== 'TODOS') {
+      list = list.filter(item => item.impact === selectedImpactFacet);
+    }
+    if (activeTagFilter) {
+      list = list.filter(item => item.userTags.includes(activeTagFilter));
+    }
+
+    // Se Modo Serendipidade ativo, reordenar e injetar diversidade de perspectivas
+    if (serendipityMode) {
+      list.reverse();
+    }
+
+    return list;
+  }, [analysis, selectedCategoryFacet, selectedImpactFacet, activeTagFilter, serendipityMode]);
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header da Aba */}
-      <header className="flex flex-wrap justify-between items-center gap-4 pb-6 border-b border-slate-800">
+    <div className="space-y-8 animate-fade-in relative z-10">
+      {/* Header com Status do Algoritmo e Ética */}
+      <header className="flex flex-wrap justify-between items-center gap-4 pb-6 border-b border-slate-800/80">
         <div>
           <div className="flex items-center gap-2.5 mb-1.5">
-            <div className="bg-gradient-to-r from-cyan-400 to-blue-500 text-black px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5">
-              <Sparkles size={16} />
-              <span>AI INTELLIGENCE</span>
+            <div className="bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 px-3 py-1 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md shadow-cyan-500/20">
+              <Sparkles size={15} />
+              <span>IA GEMINI 1.5 PRO • SEARCH GROUNDING</span>
             </div>
-            <span className="badge badge-cyan">Notícias & Desempenho Diário do Ativo</span>
+            <span className="badge badge-emerald">Classificação Facetada Active</span>
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">
-            Inteligência do Ativo & Resumo Macroeconômico
+            Inteligência de Ativos & Radar Macroeconômico
           </h1>
           <p className="text-xs text-slate-400">
-            Acompanhe o desempenho do dia do seu ativo favorito (ex: <strong className="text-cyan-400">BOVA11</strong>) e receba o boletim de notícias e diagnósticos por IA (Groq Llama 3.3 70B).
+            Pesquisa em tempo real na Web com navegação <strong className="text-cyan-400">Berry-picking</strong> e proteção contra bolhas de filtro.
           </p>
         </div>
 
-        {/* Seletor & Busca de Ativos */}
-        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
-          <form onSubmit={handleSearchSubmit} className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-cyan-500 transition-all">
-            <Search size={16} className="text-slate-400 mr-2" />
-            <input
-              type="text"
-              placeholder="Digite o código (ex: BOVA11)..."
-              value={inputTicker}
-              onChange={(e) => setInputTicker(e.target.value)}
-              className="bg-transparent text-white text-xs outline-none w-36 font-mono font-semibold"
-            />
-            <button type="submit" className="text-xs font-bold text-cyan-400 hover:text-cyan-300 ml-1">
-              Buscar
-            </button>
-          </form>
+        {/* Controles Principais de Busca e Zonas */}
+        <div className="flex flex-wrap gap-2.5 items-center">
+          {/* Toggle de Serendipidade (Anti Bolha de Filtro - Ética Algorítmica) */}
+          <button
+            onClick={() => setSerendipityMode(!serendipityMode)}
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer ${
+              serendipityMode 
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-lg shadow-purple-500/20' 
+                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+            }`}
+            title="Ative para injetar visões econômicas divergentes e quebrar ciclos de recomendação repetitivos"
+          >
+            <Compass size={15} className={serendipityMode ? 'animate-spin text-purple-400' : ''} />
+            <span>{serendipityMode ? 'Modo Serendipidade ON' : 'Diversificar Visões (Anti-Bolha)'}</span>
+          </button>
 
           <button
             onClick={() => fetchNewsAndData(selectedTicker)}
             disabled={loading}
-            className="bg-cyan-500/15 text-[var(--accent-cyan)] border border-cyan-500/30 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-cyan-500/25 transition-all disabled:opacity-50"
+            className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-cyan-500/25 transition-all cursor-pointer disabled:opacity-50"
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            {loading ? 'Atualizando IA...' : 'Atualizar Notícias'}
+            {loading ? 'Buscando Web...' : 'Atualizar Notícias'}
           </button>
         </div>
       </header>
 
-      {/* Barra de Ativos Populares para Troca Rápida */}
-      <div className="flex flex-wrap items-center gap-2 pb-2">
-        <span className="text-xs font-semibold text-slate-400 mr-1 flex items-center gap-1">
-          <Globe2 size={14} className="text-cyan-400" /> Ativos em Destaque:
-        </span>
-        {POPULAR_TICKERS.map((t) => (
-          <button
-            key={t}
-            onClick={() => handleSelectTicker(t)}
-            className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-              selectedTicker === t
-                ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-black shadow-lg shadow-cyan-500/20 scale-105'
-                : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-slate-800'
-            }`}
+      {/* Zonas de Busca e Entrada com Best Bets */}
+      <div className="bg-[#0f172a]/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-800 space-y-3">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch">
+          {/* Seletor de Zonas de Busca */}
+          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2">
+            <Layers size={16} className="text-cyan-400" />
+            <span className="text-xs text-slate-400 font-bold whitespace-nowrap">Zona:</span>
+            <select
+              value={searchZone}
+              onChange={(e) => setSearchZone(e.target.value)}
+              className="bg-transparent text-white text-xs outline-none cursor-pointer font-semibold"
+            >
+              <option value="TUDO" className="bg-slate-900">Toda a Plataforma</option>
+              <option value="ACOES" className="bg-slate-900">Ações & ETFs B3</option>
+              <option value="NOTICIAS" className="bg-slate-900">Notícias & Imprensa</option>
+              <option value="MACRO" className="bg-slate-900">Relatórios Macroeconômicos</option>
+            </select>
+          </div>
+
+          {/* Campo de Busca Principal */}
+          <form onSubmit={(e) => { e.preventDefault(); if(inputTicker.trim()) setSelectedTicker(inputTicker.trim().toUpperCase()); }} className="flex-1 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 focus-within:border-cyan-500 transition-all">
+            <Search size={16} className="text-slate-400 mr-2" />
+            <input
+              type="text"
+              placeholder="Buscar ativo ou indicador (ex: BOVA11, SELIC, IPCA)..."
+              value={inputTicker}
+              onChange={(e) => setInputTicker(e.target.value)}
+              className="bg-transparent text-white text-xs outline-none w-full font-mono font-semibold"
+            />
+            <button type="submit" className="text-xs font-bold bg-cyan-500 text-slate-950 px-3 py-1 rounded-lg hover:bg-cyan-400 transition-all">
+              Pesquisar
+            </button>
+          </form>
+        </div>
+
+        {/* Ativos em Destaque para Troca Rápida */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-[11px] font-bold text-slate-400 mr-1 flex items-center gap-1">
+            <Globe2 size={13} className="text-cyan-400" /> Atalhos Rápidos:
+          </span>
+          {POPULAR_TICKERS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setSelectedTicker(t)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                selectedTicker === t
+                  ? 'bg-cyan-400 text-slate-950 font-black shadow-md shadow-cyan-400/20'
+                  : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Componente "Best Bets" (Melhor Aposta) para Termos de Busca Relevantes */}
+      {activeBestBet && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/60 to-blue-950/60 border border-cyan-500/40 backdrop-blur-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in shadow-xl shadow-cyan-500/5">
+          <div className="space-y-1">
+            <h3 className="text-sm font-black text-cyan-300 flex items-center gap-2 font-mono">
+              {activeBestBet.title}
+            </h3>
+            <p className="text-xs text-white font-medium">{activeBestBet.subtitle}</p>
+            <div className="text-[11px] text-slate-300 sketchbook-highlight font-sans">
+              💡 <strong>Relevância Institucional:</strong> {activeBestBet.highlight}
+            </div>
+          </div>
+
+          <a
+            href={activeBestBet.linkAction}
+            className="px-3.5 py-2 rounded-xl bg-cyan-400 text-slate-950 font-black text-xs hover:bg-cyan-300 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-md shadow-cyan-400/20"
           >
-            {t}
-          </button>
-        ))}
-      </div>
+            <span>{activeBestBet.linkText}</span>
+            <ArrowUpRight size={14} />
+          </a>
+        </div>
+      )}
 
-      {/* SECTION 1: Cotação e Notícias Diárias do Ativo Selecionado */}
+      {/* ESTRUTURA PRINCIPAL EM 3 COLUNAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Card de Cotação Diária ao Vivo */}
-        <div className="glass-card p-6 lg:col-span-1 flex flex-col justify-between space-y-5">
-          <div>
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <span className="text-2xl font-black text-white font-mono">{quote?.ticker || selectedTicker}</span>
-                <p className="text-xs text-slate-400 font-medium line-clamp-1">{quote?.name}</p>
+        
+        {/* COLUNA 1: Cotação + Folksonomia (Tags do Usuário) */}
+        <div className="space-y-6 lg:col-span-1">
+          {/* Card da Cotação Real */}
+          <div className="glass-2026 p-6 rounded-2xl space-y-5">
+            <div>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <span className="text-3xl font-black text-white font-mono">{quote?.ticker || selectedTicker}</span>
+                  <p className="text-xs text-slate-400 font-medium line-clamp-1">{quote?.name}</p>
+                </div>
+                {quote && (
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1 ${
+                    quote.changePercent >= 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  }`}>
+                    {quote.changePercent >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                    {quote.changePercent >= 0 ? '+' : ''}{quote.changePercent.toFixed(2)}%
+                  </span>
+                )}
               </div>
-              {quote && (
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1 ${
-                  quote.changePercent >= 0 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                }`}>
-                  {quote.changePercent >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                  {quote.changePercent >= 0 ? '+' : ''}{quote.changePercent.toFixed(2)}%
+
+              <div className="mt-4">
+                <div className="text-4xl font-black text-white font-mono tracking-tight">
+                  {quote ? `R$ ${quote.price.toFixed(2)}` : 'R$ ---'}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">Cotação oficial de mercado • Atualizado às {quote?.updatedAt || '--:--'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-5 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono">
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-sans">Máxima do Dia</span>
+                  <span className="text-emerald-400 font-bold">R$ {quote?.high.toFixed(2) || '---'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-sans">Mínima do Dia</span>
+                  <span className="text-rose-400 font-bold">R$ {quote?.low.toFixed(2) || '---'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sentimento da IA */}
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Activity size={15} className="text-cyan-400" /> Diagnóstico da IA
                 </span>
-              )}
+                {analysis && (
+                  <span className={`badge ${
+                    analysis.sentiment === 'BULLISH' ? 'badge-emerald' : analysis.sentiment === 'BEARISH' ? 'badge-rose' : 'badge-amber'
+                  }`}>
+                    {analysis.sentiment} ({analysis.sentimentScore} pts)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-300 italic sketchbook-highlight">
+                &quot;{analysis?.sentimentReason || 'Analisando conjuntura em tempo real...'}&quot;
+              </p>
             </div>
 
-            <div className="mt-4">
-              <div className="text-3xl font-black text-white font-mono tracking-tight">
-                {quote ? formatBRL(quote.price) : 'R$ ---'}
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1">Cotação oficial de mercado • Atualizado às {quote?.updatedAt || '--:--'}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mt-5 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono">
-              <div>
-                <span className="text-[10px] text-slate-500 block font-sans">Máxima do Dia</span>
-                <span className="text-emerald-400 font-bold">{quote ? formatBRL(quote.high) : '---'}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 block font-sans">Mínima do Dia</span>
-                <span className="text-rose-400 font-bold">{quote ? formatBRL(quote.low) : '---'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Análise de Sentimento da IA */}
-          <div className="p-4 rounded-xl bg-gradient-to-br from-slate-900 to-slate-900/90 border border-cyan-500/30 space-y-2.5">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Activity size={16} className="text-cyan-400" /> Sentimento da IA (Groq)
-              </span>
-              {analysis && (
-                <span className={`badge ${
-                  analysis.sentiment === 'BULLISH' ? 'badge-emerald' : analysis.sentiment === 'BEARISH' ? 'badge-rose' : 'badge-amber'
-                }`}>
-                  {analysis.sentiment === 'BULLISH' ? 'Otimista' : analysis.sentiment === 'BEARISH' ? 'Cauteloso' : 'Neutro'} ({analysis.sentimentScore} pts)
+            {/* Folksonomia: Sistema de Tags do Usuário */}
+            <div className="border-t border-slate-800 pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Tag size={14} className="text-amber-400" /> Classificação Social (Tags)
                 </span>
-              )}
+                <span className="text-[10px] text-slate-500 font-mono">Folksonomia</span>
+              </div>
+
+              {/* Tags Atuais do Ativo */}
+              <div className="flex flex-wrap gap-1.5">
+                {(customTags[selectedTicker] || ['#favorito', '#tesouraria', '#hedge']).map((tag, idx) => (
+                  <span key={idx} className="sketchbook-tag px-2.5 py-1 rounded-md text-[11px] font-mono font-bold flex items-center gap-1">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              {/* Adicionar nova Tag */}
+              <form onSubmit={handleAddCustomTag} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Criar nova tag (ex: #risco)..."
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  className="bg-slate-900 border border-slate-800 text-white text-xs px-2.5 py-1.5 rounded-lg outline-none flex-1 font-mono"
+                />
+                <button type="submit" className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-amber-500/30 transition-all">
+                  + Tag
+                </button>
+              </form>
             </div>
-            <p className="text-xs text-slate-300 italic">
-              &quot;{analysis?.sentimentReason || 'Carregando análise diagnóstica...'}&quot;
-            </p>
           </div>
         </div>
 
-        {/* Feed de Notícias & Fatos Relevantes por IA */}
-        <div className="glass-card p-6 lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <Newspaper size={20} className="text-cyan-400" />
-              <h2 className="text-base font-bold text-white">
-                Principais Notícias & Impactos em {selectedTicker}
-              </h2>
-            </div>
-            <span className="text-xs text-slate-400 font-mono">Boletim Diário</span>
-          </div>
+        {/* COLUNA 2 & 3: Classificação Facetada & Feed de Notícias (Berry-picking) */}
+        <div className="space-y-6 lg:col-span-2">
+          <div className="glass-2026 p-6 rounded-2xl space-y-5">
+            
+            {/* Header da Seção de Notícias */}
+            <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Newspaper size={20} className="text-cyan-400" />
+                <h2 className="text-base font-bold text-white">
+                  Feed de Notícias & Fatos Relevantes
+                </h2>
+              </div>
 
-          {loading ? (
-            <div className="py-12 text-center text-slate-400 space-y-2">
-              <RefreshCw size={24} className="spin mx-auto text-cyan-400" />
-              <p className="text-xs font-medium">Processando notícias e contexto de mercado com Groq Llama 3.3 70B...</p>
+              {/* Tag com Indicação de Ética Algorítmica */}
+              <div className="flex items-center gap-2 text-xs font-mono text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+                <Eye size={13} />
+                <span>{serendipityMode ? 'Navegação Aberta' : 'Filtro Direcionado'}</span>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3.5">
-              {analysis?.newsList.map((news, idx) => (
-                <div key={idx} className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 transition-all space-y-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <h3 className="text-sm font-bold text-white hover:text-cyan-300 transition-colors">
-                      {news.title}
-                    </h3>
-                    <span className={`badge ${
-                      news.impact === 'POSITIVO' ? 'badge-emerald' : news.impact === 'NEGATIVO' ? 'badge-rose' : 'badge-cyan'
-                    }`}>
-                      Impacto {news.impact}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {news.summary}
-                  </p>
-                  <div className="text-[11px] text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-md border border-cyan-500/20 font-medium">
-                    📌 {news.impactDetail}
-                  </div>
+
+            {/* Barra de Filtros Facetados (Classificação Facetada de S. R. Ranganathan) */}
+            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                <SlidersHorizontal size={14} className="text-cyan-400" />
+                <span>Navegação por Facetas (Berry-picking):</span>
+              </div>
+
+              <div className="flex flex-wrap gap-2 text-xs">
+                {/* Faceta de Categoria */}
+                <div className="flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                  <span className="text-slate-500 text-[11px]">Tópico:</span>
+                  <select
+                    value={selectedCategoryFacet}
+                    onChange={(e) => setSelectedCategoryFacet(e.target.value)}
+                    className="bg-transparent text-cyan-300 font-bold outline-none cursor-pointer"
+                  >
+                    <option value="TODOS" className="bg-slate-900">Todos os Tópicos</option>
+                    <option value="Fiscal" className="bg-slate-900">Política Fiscal</option>
+                    <option value="Juros/Selic" className="bg-slate-900">Juros & Selic</option>
+                    <option value="Ações/FIIs" className="bg-slate-900">Ações & FIIs</option>
+                  </select>
                 </div>
-              ))}
+
+                {/* Faceta de Impacto */}
+                <div className="flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                  <span className="text-slate-500 text-[11px]">Impacto:</span>
+                  <select
+                    value={selectedImpactFacet}
+                    onChange={(e) => setSelectedImpactFacet(e.target.value)}
+                    className="bg-transparent text-emerald-400 font-bold outline-none cursor-pointer"
+                  >
+                    <option value="TODOS" className="bg-slate-900">Todos os Impactos</option>
+                    <option value="POSITIVO" className="bg-slate-900">Positivo</option>
+                    <option value="NEGATIVO" className="bg-slate-900">Negativo</option>
+                    <option value="NEUTRO" className="bg-slate-900">Neutro</option>
+                  </select>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Lista de Notícias Filtradas */}
+            {loading ? (
+              <div className="py-16 text-center text-slate-400 space-y-3">
+                <RefreshCw size={28} className="spin mx-auto text-cyan-400" />
+                <p className="text-xs font-medium">Buscando as últimas notícias na Web via Gemini 1.5 Pro...</p>
+              </div>
+            ) : filteredNews.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 text-xs">
+                Nenhuma notícia encontrada para a combinação de facetas selecionada.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredNews.map((news, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2.5 relative overflow-hidden">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="text-sm font-bold text-white hover:text-cyan-300 transition-colors">
+                        {news.title}
+                      </h3>
+                      <span className={`badge ${
+                        news.impact === 'POSITIVO' ? 'badge-emerald' : news.impact === 'NEGATIVO' ? 'badge-rose' : 'badge-cyan'
+                      }`}>
+                        {news.impact}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                      {news.summary}
+                    </p>
+
+                    <div className="text-[11px] text-cyan-300 bg-cyan-950/40 px-3 py-1.5 rounded-lg border border-cyan-500/20 font-medium">
+                      📌 <strong>Impacto Operacional:</strong> {news.impactDetail}
+                    </div>
+
+                    {/* Tags da Notícia */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60 text-[11px]">
+                      <span className="text-slate-500">Categoria: <strong className="text-slate-300">{news.category}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* SECTION 2: Radar Macroeconômico & Tendências de Renda Fixa e Renda Variável com Tooltips no Hover */}
-      <div className="glass-card p-6 space-y-6">
-        <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-4">
+      {/* SEÇÃO 3: Radar Macroeconômico com Tooltips (Gestalt & Proximidade Visual) */}
+      <div className="glass-2026 p-6 rounded-2xl space-y-6">
+        <div className="flex justify-between items-center border-b border-slate-800 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="bg-amber-500/10 p-2.5 rounded-xl text-amber-400">
+            <div className="bg-amber-500/15 p-2.5 rounded-xl text-amber-400 border border-amber-500/30">
               <Zap size={22} />
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">
-                Radar Macroeconômico & Tendências de Investimentos
+                Diagnóstico & Tendências Macroeconômicas
               </h2>
               <p className="text-xs text-slate-400">
-                Passe o mouse nos botões <span className="text-cyan-400 font-bold font-mono">(i)</span> para ver a relação de cada indicador com os ativos.
+                Resumo unificado de conjuntura nacional e internacional. Passe o mouse nos botões <span className="text-cyan-400 font-bold font-mono">(i)</span> para explicações.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Grid de Indicadores Macroeconômicos com Tooltips Educativos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Indicador Selic */}
-          <div className="relative group p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 transition-all">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
-                Selic Oficial (BCB)
-              </span>
-              <button 
-                onMouseEnter={() => setActiveTooltip('SELIC')}
-                onMouseLeave={() => setActiveTooltip(null)}
-                className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full bg-cyan-500/10"
-              >
-                <Info size={15} />
-              </button>
-            </div>
-            <div className="text-2xl font-black text-amber-400 font-mono">14,00% a.a.</div>
-            <div className="text-[11px] text-slate-500 mt-1">Patamar Contracionista</div>
-
-            {/* Popover / Tooltip no Hover */}
-            {activeTooltip === 'SELIC' && (
-              <div className="absolute left-0 bottom-full mb-2 w-72 p-3.5 rounded-xl bg-[#0f172a] border border-cyan-500/40 shadow-2xl text-xs space-y-2 z-50 animate-fade-in">
-                <div className="font-bold text-cyan-400 border-b border-white/10 pb-1">📌 Selic Meta</div>
-                <p className="text-slate-300">{MACRO_TOOLTIPS.SELIC.concept}</p>
-                <div className="text-[11px] text-amber-300"><strong>Macro:</strong> {MACRO_TOOLTIPS.SELIC.macroRelation}</div>
-                <div className="text-[11px] text-emerald-300"><strong>Investimentos:</strong> {MACRO_TOOLTIPS.SELIC.assetImpact}</div>
-              </div>
-            )}
-          </div>
-
-          {/* Indicador IPCA */}
-          <div className="relative group p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-rose-500/50 transition-all">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-400 font-medium">IPCA Focus (12m)</span>
-              <button 
-                onMouseEnter={() => setActiveTooltip('IPCA')}
-                onMouseLeave={() => setActiveTooltip(null)}
-                className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full bg-cyan-500/10"
-              >
-                <Info size={15} />
-              </button>
-            </div>
-            <div className="text-2xl font-black text-rose-400 font-mono">4,50% a.a.</div>
-            <div className="text-[11px] text-slate-500 mt-1">Teto da Meta CMN</div>
-
-            {activeTooltip === 'IPCA' && (
-              <div className="absolute left-0 bottom-full mb-2 w-72 p-3.5 rounded-xl bg-[#0f172a] border border-cyan-500/40 shadow-2xl text-xs space-y-2 z-50 animate-fade-in">
-                <div className="font-bold text-cyan-400 border-b border-white/10 pb-1">📌 Inflação (IPCA)</div>
-                <p className="text-slate-300">{MACRO_TOOLTIPS.IPCA.concept}</p>
-                <div className="text-[11px] text-amber-300"><strong>Macro:</strong> {MACRO_TOOLTIPS.IPCA.macroRelation}</div>
-                <div className="text-[11px] text-emerald-300"><strong>Investimentos:</strong> {MACRO_TOOLTIPS.IPCA.assetImpact}</div>
-              </div>
-            )}
-          </div>
-
-          {/* Indicador Dólar PTAX */}
-          <div className="relative group p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 transition-all">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-400 font-medium">Câmbio Dólar PTAX</span>
-              <button 
-                onMouseEnter={() => setActiveTooltip('DOLAR')}
-                onMouseLeave={() => setActiveTooltip(null)}
-                className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full bg-cyan-500/10"
-              >
-                <Info size={15} />
-              </button>
-            </div>
-            <div className="text-2xl font-black text-cyan-400 font-mono">R$ 5,55</div>
-            <div className="text-[11px] text-slate-500 mt-1">Volatilidade de Câmbio</div>
-
-            {activeTooltip === 'DOLAR' && (
-              <div className="absolute left-0 bottom-full mb-2 w-72 p-3.5 rounded-xl bg-[#0f172a] border border-cyan-500/40 shadow-2xl text-xs space-y-2 z-50 animate-fade-in">
-                <div className="font-bold text-cyan-400 border-b border-white/10 pb-1">📌 Dólar PTAX</div>
-                <p className="text-slate-300">{MACRO_TOOLTIPS.DOLAR.concept}</p>
-                <div className="text-[11px] text-amber-300"><strong>Macro:</strong> {MACRO_TOOLTIPS.DOLAR.macroRelation}</div>
-                <div className="text-[11px] text-emerald-300"><strong>Investimentos:</strong> {MACRO_TOOLTIPS.DOLAR.assetImpact}</div>
-              </div>
-            )}
-          </div>
-
-          {/* Indicador Curva DI */}
-          <div className="relative group p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 transition-all">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-slate-400 font-medium">Curva DI Longa</span>
-              <button 
-                onMouseEnter={() => setActiveTooltip('CURVA_DI')}
-                onMouseLeave={() => setActiveTooltip(null)}
-                className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full bg-cyan-500/10"
-              >
-                <Info size={15} />
-              </button>
-            </div>
-            <div className="text-2xl font-black text-purple-400 font-mono">13,85% a.a.</div>
-            <div className="text-[11px] text-slate-500 mt-1">Prêmio de Risco Elevado</div>
-
-            {activeTooltip === 'CURVA_DI' && (
-              <div className="absolute left-0 bottom-full mb-2 w-72 p-3.5 rounded-xl bg-[#0f172a] border border-cyan-500/40 shadow-2xl text-xs space-y-2 z-50 animate-fade-in">
-                <div className="font-bold text-cyan-400 border-b border-white/10 pb-1">📌 Juros Futuros (DI)</div>
-                <p className="text-slate-300">{MACRO_TOOLTIPS.CURVA_DI.concept}</p>
-                <div className="text-[11px] text-amber-300"><strong>Macro:</strong> {MACRO_TOOLTIPS.CURVA_DI.macroRelation}</div>
-                <div className="text-[11px] text-emerald-300"><strong>Investimentos:</strong> {MACRO_TOOLTIPS.CURVA_DI.assetImpact}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Diagnóstico da Tendência Macroeconômica */}
-        <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3">
+        {/* Diagnóstico Geral por IA Gemini */}
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Globe2 size={18} className="text-cyan-400" />
-              Tendência & Diagnóstico Macroeconômico Geral (IA Groq Llama 3.3 70B)
+              Análise de Conjuntura & Risco Fiscal (Google Search Grounding)
             </h3>
             <button 
               onMouseEnter={() => setActiveTooltip('MACRO_GERAL')}
               onMouseLeave={() => setActiveTooltip(null)}
-              className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full bg-cyan-500/10 flex items-center gap-1 text-xs"
+              className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full bg-cyan-500/10 text-xs flex items-center gap-1"
             >
-              <Info size={14} /> O que significa?
+              <Info size={14} /> Conceito
             </button>
           </div>
 
-          <p className="text-xs text-slate-300 leading-relaxed font-sans">
-            {analysis?.macroSummary.macroDiagnosis || 'Carregando diagnóstico de conjuntura macroeconômica...'}
+          <p className="text-xs text-slate-300 leading-relaxed font-sans sketchbook-highlight">
+            {analysis?.macroSummary?.macroDiagnosis || 'Buscando diagnósticos macroeconômicos mais recentes...'}
           </p>
         </div>
 
-        {/* Tendências por Classe de Ativo (Renda Fixa x Renda Variável) */}
+        {/* Tendências por Classe de Ativo */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Coluna 1: Tendência da Renda Fixa */}
-          <div className="p-5 rounded-2xl bg-slate-900/70 border border-emerald-500/20 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <h3 className="text-sm font-bold text-emerald-400 flex items-center gap-2">
-                <ShieldAlert size={18} />
-                Tendência para Renda Fixa
-              </h3>
-              <button 
-                onMouseEnter={() => setActiveTooltip('RENDA_FIXA')}
-                onMouseLeave={() => setActiveTooltip(null)}
-                className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full bg-cyan-500/10"
-              >
-                <Info size={15} />
-              </button>
-            </div>
-
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/20 space-y-4">
+            <h3 className="text-sm font-bold text-emerald-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+              <ShieldAlert size={18} />
+              Renda Fixa (CDI vs IPCA+)
+            </h3>
             <div className="space-y-3 text-xs">
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                <span className="font-bold text-white block mb-1">Pós-Fixados (CDI / Selic):</span>
-                <p className="text-slate-300 leading-relaxed">{analysis?.macroSummary.fixedIncomeCDI}</p>
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span className="font-bold text-white block mb-1">Pós-Fixados (CDI):</span>
+                <p className="text-slate-300 leading-relaxed">{analysis?.macroSummary?.fixedIncomeCDI}</p>
               </div>
-
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                <span className="font-bold text-white block mb-1">Pré-Fixados & IPCA+ (NTN-B):</span>
-                <p className="text-slate-300 leading-relaxed">{analysis?.macroSummary.fixedIncomeIPCAAndPre}</p>
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span className="font-bold text-white block mb-1">Pré-Fixados & IPCA+:</span>
+                <p className="text-slate-300 leading-relaxed">{analysis?.macroSummary?.fixedIncomeIPCAAndPre}</p>
               </div>
             </div>
           </div>
 
-          {/* Coluna 2: Tendência da Renda Variável */}
-          <div className="p-5 rounded-2xl bg-slate-900/70 border border-cyan-500/20 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <h3 className="text-sm font-bold text-cyan-400 flex items-center gap-2">
-                <TrendingUp size={18} />
-                Tendência para Renda Variável
-              </h3>
-              <button 
-                onMouseEnter={() => setActiveTooltip('RENDA_VARIAVEL')}
-                onMouseLeave={() => setActiveTooltip(null)}
-                className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full bg-cyan-500/10"
-              >
-                <Info size={15} />
-              </button>
-            </div>
-
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-cyan-500/20 space-y-4">
+            <h3 className="text-sm font-bold text-cyan-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+              <TrendingUp size={18} />
+              Renda Variável (Ações & FIIs)
+            </h3>
             <div className="space-y-3 text-xs">
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                <span className="font-bold text-white block mb-1">Ações & ETFs ({selectedTicker} / Ibovespa):</span>
-                <p className="text-slate-300 leading-relaxed">{analysis?.macroSummary.equityStocks}</p>
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span className="font-bold text-white block mb-1">Ações & ETFs ({selectedTicker}):</span>
+                <p className="text-slate-300 leading-relaxed">{analysis?.macroSummary?.equityStocks}</p>
               </div>
-
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                <span className="font-bold text-white block mb-1">Fundos Imobiliários (FIIs):</span>
-                <p className="text-slate-300 leading-relaxed">{analysis?.macroSummary.equityFIIs}</p>
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                <span className="font-bold text-white block mb-1">Fundos Imobiliários:</span>
+                <p className="text-slate-300 leading-relaxed">{analysis?.macroSummary?.equityFIIs}</p>
               </div>
             </div>
           </div>
