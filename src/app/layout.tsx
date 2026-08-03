@@ -38,6 +38,7 @@ export default async function RootLayout({
             {session && (
               <nav className="flex items-center gap-4 text-sm font-medium">
                 <a href="/" className="text-slate-300 hover:text-white transition-colors">Painel</a>
+                <Link href="/news" className="text-slate-300 hover:text-white transition-colors">Notícias & Ativo</Link>
                 <Link href="/simulator" className="text-slate-300 hover:text-white transition-colors">Simulador</Link>
                 <Link href="/settings" className="text-slate-300 hover:text-white transition-colors">Alertas</Link>
                 <form action={async () => {
