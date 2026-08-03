@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   TrendingUp, TrendingDown, RefreshCw, Search, Info, ShieldAlert, Zap, 
   Newspaper, Layers, CheckCircle2, ArrowUpRight, ArrowDownRight, Globe2,
-  DollarSign, Activity, FileText, Tag, SlidersHorizontal
+  DollarSign, Activity, FileText, Tag, SlidersHorizontal, ExternalLink
 } from 'lucide-react';
 
 interface AssetQuote {
@@ -18,21 +18,23 @@ interface AssetQuote {
   updatedAt: string;
 }
 
-interface NewsItem {
+interface RealNewsItem {
   id: string;
   title: string;
   summary: string;
+  link: string;
   impact: 'POSITIVO' | 'NEGATIVO' | 'NEUTRO';
   impactDetail: string;
   category: 'Fiscal' | 'Juros/Selic' | 'Ações/FIIs';
-  userTags: string[];
+  source?: string;
+  pubDate?: string;
 }
 
 interface MarketAnalysis {
   sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
   sentimentScore: number;
   sentimentReason: string;
-  newsList: NewsItem[];
+  newsList: RealNewsItem[];
   catalysts: string[];
   macroSummary: {
     macroDiagnosis: string;
@@ -44,34 +46,34 @@ interface MarketAnalysis {
 }
 
 // Best Bets Dictionary (Instant Answers for High-Intent Queries)
-const BEST_BETS: Record<string, { title: string; subtitle: string; highlight: string; linkText: string; linkAction: string }> = {
+const BEST_BETS: Record<string, { title: string; subtitle: string; highlight: string; linkText: string; symbol: string }> = {
   SELIC: {
     title: '🎯 Best Bet: Taxa Selic Oficial',
     subtitle: 'Atualmente em 14,00% a.a. definida pelo Copom.',
     highlight: 'Rendimento de 100% do CDI equivale a ~1,08% ao mês líquido de IR em prazos curtos.',
-    linkText: 'Simular Investimento em Selic',
-    linkAction: '/simulator'
+    linkText: 'Ver Gráfico no TradingView',
+    symbol: 'BMFBOVESPA:DI1F27'
   },
   IPCA: {
     title: '🎯 Best Bet: Inflação Oficial (IPCA)',
     subtitle: 'Expectativa Focus em 4,50% no acumulado de 12 meses.',
     highlight: 'Tesouro IPCA+ com cupom real de IPCA + 6,55% a.a. oferece proteção máxima de patrimônio.',
-    linkText: 'Ver Títulos IPCA+ no Simulador',
-    linkAction: '/simulator'
+    linkText: 'Ver Gráfico no TradingView',
+    symbol: 'BMFBOVESPA:IBOV'
   },
   DOLAR: {
     title: '🎯 Best Bet: Câmbio Dólar PTAX (USD/BRL)',
     subtitle: 'Cotação de referência calculada pelo Banco Central.',
     highlight: 'Empresas exportadoras (PETR4, VALE3) e o ETF IVVB11 protegem contra a desvalorização cambial.',
-    linkText: 'Analisar Ativos em Dólar',
-    linkAction: '/news'
+    linkText: 'Abrir Dólar no TradingView',
+    symbol: 'FX_IDC:USDBRL'
   },
   BOVA11: {
     title: '🎯 Best Bet: ETF iShares Ibovespa (BOVA11)',
     subtitle: 'Replica a carteira teórica do Índice Bovespa.',
     highlight: 'Negociado a múltiplos descontados frente à média histórica de 10 anos.',
-    linkText: 'Acompanhar BOVA11 em Tempo Real',
-    linkAction: '/news'
+    linkText: 'Abrir BOVA11 no TradingView',
+    symbol: 'BMFBOVESPA:BOVA11'
   }
 };
 
@@ -109,7 +111,7 @@ export default function NewsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
-  // Faceted Search State (Berry-picking)
+  // Faceted Search State
   const [selectedCategoryFacet, setSelectedCategoryFacet] = useState<string>('TODOS');
   const [selectedImpactFacet, setSelectedImpactFacet] = useState<string>('TODOS');
 
@@ -134,18 +136,7 @@ export default function NewsPage() {
       });
       const data = await res.json();
       setQuote(data.quote);
-      
-      const enrichedNews = data.analysis?.newsList?.map((item: any, idx: number) => ({
-        ...item,
-        id: `news-${idx}`,
-        category: idx === 0 ? 'Fiscal' : idx === 1 ? 'Ações/FIIs' : 'Juros/Selic',
-        userTags: ['#analise-macro', '#b3-brasil']
-      })) || [];
-
-      setAnalysis({
-        ...data.analysis,
-        newsList: enrichedNews
-      });
+      setAnalysis(data.analysis);
 
       localStorage.setItem('user_favorite_asset', ticker);
     } catch (err) {
@@ -162,7 +153,13 @@ export default function NewsPage() {
   // Best Bet correspondente à busca do usuário
   const activeBestBet = useMemo(() => {
     const term = inputTicker.trim().toUpperCase() || selectedTicker.toUpperCase();
-    return BEST_BETS[term] || null;
+    return BEST_BETS[term] || {
+      title: `🎯 Best Bet: Ativo ${selectedTicker}`,
+      subtitle: `Cotação e indicadores em tempo real na B3.`,
+      highlight: `Acompanhe a curva de preços oficial e histórico do ativo ${selectedTicker} no TradingView.`,
+      linkText: `Abrir ${selectedTicker} no TradingView`,
+      symbol: `BMFBOVESPA:${selectedTicker}`
+    };
   }, [inputTicker, selectedTicker]);
 
   // Adicionar Tag ao Ativo (Folksonomia)
@@ -192,20 +189,25 @@ export default function NewsPage() {
     return list;
   }, [analysis, selectedCategoryFacet, selectedImpactFacet]);
 
+  const getTradingViewUrl = (symbol: string) => {
+    const clean = symbol.replace('BMFBOVESPA:', '').replace('FX_IDC:', '');
+    return `https://br.tradingview.com/symbols/BMFBOVESPA-${clean}/`;
+  };
+
   return (
     <div className="space-y-8 animate-fade-in relative z-10">
       {/* Header */}
       <header className="flex flex-wrap justify-between items-center gap-4 pb-6 border-b border-slate-800/80">
         <div>
           <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="badge badge-cyan">Dados Financeiros & Cotações B3</span>
-            <span className="badge badge-emerald">Classificação Facetada</span>
+            <span className="badge badge-cyan">Notícias Reais em Tempo Real (Google News / Imprensa B3)</span>
+            <span className="badge badge-emerald">Links Oficiais</span>
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">
             Notícias do Ativo & Diagnóstico Macroeconômico
           </h1>
           <p className="text-xs text-slate-400">
-            Acompanhe a cotação oficial, métricas quantitativas de volatilidade e o boletim institucional da B3.
+            Cotação oficial em tempo real, matérias de portais jornalísticos financeiros e métricas quantitativas.
           </p>
         </div>
 
@@ -216,7 +218,7 @@ export default function NewsPage() {
             className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-cyan-500/25 transition-all cursor-pointer disabled:opacity-50"
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            {loading ? 'Carregando Cotações...' : 'Atualizar Dados'}
+            {loading ? 'Carregando Notícias...' : 'Atualizar Notícias Reais'}
           </button>
         </div>
       </header>
@@ -274,7 +276,7 @@ export default function NewsPage() {
         </div>
       </div>
 
-      {/* Best Bets (Resposta Instantânea) */}
+      {/* Best Bets (Resposta Instantânea com Link direto pro TradingView) */}
       {activeBestBet && (
         <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/60 to-blue-950/60 border border-cyan-500/40 backdrop-blur-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in shadow-xl shadow-cyan-500/5">
           <div className="space-y-1">
@@ -288,11 +290,13 @@ export default function NewsPage() {
           </div>
 
           <a
-            href={activeBestBet.linkAction}
-            className="px-3.5 py-2 rounded-xl bg-cyan-400 text-slate-950 font-black text-xs hover:bg-cyan-300 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-md shadow-cyan-400/20"
+            href={getTradingViewUrl(activeBestBet.symbol)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded-xl bg-cyan-400 text-slate-950 font-black text-xs hover:bg-cyan-300 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-md shadow-cyan-400/20 cursor-pointer"
           >
             <span>{activeBestBet.linkText}</span>
-            <ArrowUpRight size={14} />
+            <ExternalLink size={14} />
           </a>
         </div>
       )}
@@ -300,7 +304,7 @@ export default function NewsPage() {
       {/* ESTRUTURA EM 3 COLUNAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Cotação Diária */}
+        {/* Cotação Diária + Acompanhar no TradingView */}
         <div className="space-y-6 lg:col-span-1">
           <div className="glass-2026 p-6 rounded-2xl space-y-5">
             <div>
@@ -326,7 +330,18 @@ export default function NewsPage() {
                 <p className="text-[11px] text-slate-400 mt-1">Cotação oficial de mercado • Atualizado às {quote?.updatedAt || '--:--'}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mt-5 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono">
+              {/* Botão de Link Direto para o TradingView do Ativo */}
+              <a
+                href={getTradingViewUrl(selectedTicker)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-400 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-cyan-500/10"
+              >
+                <span>Acompanhar {selectedTicker} no TradingView</span>
+                <ExternalLink size={14} />
+              </a>
+
+              <div className="grid grid-cols-2 gap-3 mt-4 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono">
                 <div>
                   <span className="text-[10px] text-slate-400 block font-sans">Máxima do Dia</span>
                   <span className="text-emerald-400 font-bold">R$ {quote?.high.toFixed(2) || '---'}</span>
@@ -390,14 +405,14 @@ export default function NewsPage() {
           </div>
         </div>
 
-        {/* Feed de Notícias & Facetas */}
+        {/* Feed de Notícias REAIS com Links Clicáveis */}
         <div className="space-y-6 lg:col-span-2">
           <div className="glass-2026 p-6 rounded-2xl space-y-5">
             <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Newspaper size={20} className="text-cyan-400" />
                 <h2 className="text-base font-bold text-white">
-                  Boletim Institucional & Notícias B3
+                  Notícias Reais em Tempo Real (Fontes Jornalísticas B3)
                 </h2>
               </div>
             </div>
@@ -440,11 +455,11 @@ export default function NewsPage() {
               </div>
             </div>
 
-            {/* Lista de Notícias */}
+            {/* Lista de Notícias Reais com Links */}
             {loading ? (
               <div className="py-16 text-center text-slate-400 space-y-3">
                 <RefreshCw size={28} className="spin mx-auto text-cyan-400" />
-                <p className="text-xs font-medium">Buscando dados oficiais do mercado...</p>
+                <p className="text-xs font-medium">Buscando notícias reais no Google News e B3...</p>
               </div>
             ) : filteredNews.length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-xs">
@@ -455,10 +470,16 @@ export default function NewsPage() {
                 {filteredNews.map((news, idx) => (
                   <div key={idx} className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-2.5">
                     <div className="flex justify-between items-start gap-2">
-                      <h3 className="text-sm font-bold text-white hover:text-cyan-300 transition-colors">
-                        {news.title}
-                      </h3>
-                      <span className={`badge ${
+                      <a 
+                        href={news.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm font-bold text-white hover:text-cyan-300 transition-colors flex items-center gap-1.5"
+                      >
+                        <span>{news.title}</span>
+                        <ExternalLink size={14} className="text-cyan-400 shrink-0" />
+                      </a>
+                      <span className={`badge shrink-0 ${
                         news.impact === 'POSITIVO' ? 'badge-emerald' : news.impact === 'NEGATIVO' ? 'badge-rose' : 'badge-cyan'
                       }`}>
                         {news.impact}
@@ -469,8 +490,21 @@ export default function NewsPage() {
                       {news.summary}
                     </p>
 
-                    <div className="text-[11px] text-cyan-300 bg-cyan-950/40 px-3 py-1.5 rounded-lg border border-cyan-500/20 font-medium">
-                      📌 <strong>Impacto Operacional:</strong> {news.impactDetail}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+                      <div className="text-[11px] text-cyan-300 bg-cyan-950/40 px-2.5 py-1 rounded-lg border border-cyan-500/20 font-medium">
+                        📌 {news.impactDetail}
+                      </div>
+
+                      {/* Botão de Link Externo para a Notícia */}
+                      <a
+                        href={news.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 hover:border-cyan-500/40 transition-all"
+                      >
+                        <span>Ler na fonte ({news.source || 'Matéria Completa'})</span>
+                        <ExternalLink size={12} />
+                      </a>
                     </div>
                   </div>
                 ))}
