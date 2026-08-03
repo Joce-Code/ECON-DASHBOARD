@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import TradingViewWidget from "@/components/TradingViewWidget";
 import WhatIfCalculator from "@/components/WhatIfCalculator";
-import RagChat from "@/components/RagChat";
+
 import KpiSection from "@/components/KpiSection";
 
 export const dynamic = 'force-dynamic';
