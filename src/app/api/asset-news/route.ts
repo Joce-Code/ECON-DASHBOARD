@@ -99,94 +99,83 @@ function generateFallbackQuote(ticker: string): AssetQuoteData {
 }
 
 async function generateAiNewsAndMacro(ticker: string, quote: AssetQuoteData) {
-  const groqKey = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
   const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const prompt = `Você é o Diretor de Inteligência Financeira e Análise de Mercado do Focus Tracker, conhecido por suas opiniões fortes, diretas e contundentes.
+  const prompt = `Você é o Diretor de Inteligência Financeira e Análise de Mercado do Focus Tracker. Seu trabalho é pesquisar a internet AGORA, ler as últimas notícias e fechar um diagnóstico em tempo real.
 Hoje é ${hoje}.
 
 Ativo em análise: ${ticker} (${quote.name}) 
 Cotação atual: R$ ${quote.price.toFixed(2)} 
 Variação diária: ${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}%.
 
-DIRETRIZES CRÍTICAS:
-1. ATENÇÃO À DATA: Verifique o dia da semana atual. Se ontem ou hoje for fim de semana (Sábado/Domingo), os mercados da B3 estão FECHADOS. NÃO invente notícias de "quedas" ou "altas" de mercado ocorridas no fim de semana.
-2. POSICIONAMENTO MACRO: Não seja genérico! Assuma uma postura crítica e direta. Se o endividamento público está alto, afirme sem medo que a macroeconomia está "horrível" devido à trajetória da dívida fiscal e como isso pune severamente os ativos de risco.
+DIRETRIZES CRÍTICAS PARA BUSCA NA WEB:
+1. ATENÇÃO À DATA: Verifique as notícias publicadas HOJE e NOS ÚLTIMOS 2 DIAS sobre o ativo e sobre o Brasil (Selic, IPCA, Dólar, Dívida). 
+2. POSICIONAMENTO MACRO: Não seja genérico! Use as notícias para assumir uma postura crítica. Se o endividamento e a Selic estão ruins, afirme sem medo que a macroeconomia está ruim.
+3. Não invente! Traga os títulos reais das notícias que você encontrar na internet.
 
-Forneça um relatório em formato JSON com o seguinte esquema estrito:
+Forneça um relatório em formato JSON (e SOMENTE JSON) com o seguinte esquema:
 {
   "sentiment": "BULLISH" ou "BEARISH" ou "NEUTRAL",
   "sentimentScore": número de 0 a 100,
-  "sentimentReason": "uma frase curta resumindo o motivo do sentimento",
+  "sentimentReason": "uma frase curta resumindo o motivo",
   "newsList": [
     {
-      "title": "Manchete relevante e real (ou baseada na conjuntura da semana) sobre ${ticker}",
-      "summary": "Resumo executivo de 2 frases mostrando o fato relevante",
+      "title": "Manchete real e atual sobre ${ticker} ou seu setor",
+      "summary": "Resumo da notícia encontrada",
       "impact": "POSITIVO" ou "NEGATIVO" ou "NEUTRO",
-      "impactDetail": "Explicação do impacto no valuation e nos resultados do ativo"
+      "impactDetail": "Explicação do impacto"
     },
-    {
-      "title": "Manchete 2",
-      "summary": "Resumo 2",
-      "impact": "POSITIVO" ou "NEGATIVO" ou "NEUTRO",
-      "impactDetail": "Explicação"
-    },
-    {
-      "title": "Manchete 3",
-      "summary": "Resumo 3",
-      "impact": "POSITIVO" ou "NEGATIVO" ou "NEUTRO",
-      "impactDetail": "Explicação"
-    }
+    { "title": "Manchete 2", "summary": "Resumo 2", "impact": "...", "impactDetail": "..." },
+    { "title": "Manchete 3", "summary": "Resumo 3", "impact": "...", "impactDetail": "..." }
   ],
   "catalysts": [
-    "Catalisador 1 real para os próximos dias",
-    "Catalisador 2 real para os próximos dias"
+    "Catalisador real (evento futuro próximo)",
+    "Catalisador real 2"
   ],
   "macroSummary": {
-    "macroDiagnosis": "Diagnóstico extremamente posicionado e crítico da macroeconomia brasileira (ex: detone a questão do endividamento e risco fiscal de forma contundente e como isso força a Selic).",
-    "fixedIncomeCDI": "Análise direta para títulos Pós-fixados (CDI).",
-    "fixedIncomeIPCAAndPre": "Análise direta para títulos Pré-fixados e IPCA+.",
-    "equityStocks": "Análise crítica para Renda Variável, focando no massacre do custo de capital nas ações.",
-    "equityFIIs": "Análise para Fundos Imobiliários."
+    "macroDiagnosis": "Diagnóstico contundente baseado nas notícias de hoje (ex: detone a dívida e juros altos ou elogie o crescimento, seja 100% fiel à realidade da web de hoje).",
+    "fixedIncomeCDI": "Análise direta para CDI hoje.",
+    "fixedIncomeIPCAAndPre": "Análise direta para IPCA+ hoje.",
+    "equityStocks": "Análise crítica para Ações e Custo de Capital hoje.",
+    "equityFIIs": "Análise para FIIs hoje."
   }
 }
 
 Responda APENAS o JSON válido sem nenhum texto adicional.`;
 
-  if (groqKey) {
+  if (geminiKey) {
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${groqKey}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: 'Você é um analista de investimentos institucional sênior. Responda estritamente em formato JSON.' },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0.3,
-          response_format: { type: 'json_object' },
+          contents: [{ parts: [{ text: prompt }] }],
+          tools: [{ googleSearch: {} }],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json"
+          }
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = data?.choices?.[0]?.message?.content;
+      if (response.ok) {
+        const data = await response.json();
+        const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (content) {
           const parsed = JSON.parse(content);
           if (parsed.sentiment && parsed.macroSummary) {
             return parsed;
           }
         }
+      } else {
+        console.warn('Gemini API Error:', await response.text());
       }
     } catch (err) {
-      console.warn('Groq AI generation for asset news failed, fallback to local engine:', err);
+      console.warn('Gemini AI generation failed, fallback to local engine:', err);
     }
   }
 
+  // Fallback se não tiver chave do Gemini ou erro
   return generateLocalMacroAndNews(ticker, quote);
 }
 
